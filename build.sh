@@ -4,6 +4,13 @@ set -euo pipefail
 project_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 build_dir="$project_dir/build"
 dist_dir="$project_dir/dist"
+version=$(sed -n 's/^version=//p' "$project_dir/module/module.prop")
+if [[ -z "$version" ]]; then
+    echo "error: module/module.prop does not define a version" >&2
+    exit 1
+fi
+module_archive="oplus-region-unlock-magisk-v$version.zip"
+pc_archive="oplus-region-unlock-pc-v$version.zip"
 
 find_android_jar() {
     if [[ -n "${ANDROID_JAR:-}" && -f "$ANDROID_JAR" ]]; then
@@ -79,7 +86,10 @@ if [[ -z "$android_jar" || ( -z "$d8_bin" && -z "$d8_jar" ) ]]; then
 fi
 
 rm -rf "$build_dir"
-mkdir -p "$build_dir/classes" "$build_dir/dex" "$build_dir/module/system/etc" "$dist_dir"
+mkdir -p "$build_dir/classes" "$build_dir/dex" "$build_dir/module/system/etc" \
+    "$build_dir/pc/oplus-region-unlock-pc-v$version/pc" \
+    "$build_dir/pc/oplus-region-unlock-pc-v$version/dist" "$dist_dir"
+rm -f "$dist_dir/$module_archive" "$dist_dir/$pc_archive"
 
 javac --release 8 -cp "$android_jar" -d "$build_dir/classes" \
     "$project_dir/src/dev/op15/regionunlock/RegionUnlock.java"
@@ -98,13 +108,23 @@ chmod 0755 "$build_dir/module/customize.sh" "$build_dir/module/service.sh" \
     "$build_dir/module/system/bin/region-unlock"
 (
     cd "$build_dir/module"
-    zip -q -r "$dist_dir/oplus-region-unlock-magisk-v0.1.0.zip" .
+    zip -q -r "$dist_dir/$module_archive" .
+)
+
+pc_root="$build_dir/pc/oplus-region-unlock-pc-v$version"
+cp "$project_dir/pc/region_unlock.py" "$pc_root/pc/region_unlock.py"
+cp "$dist_dir/oplus-region-unlock.jar" "$pc_root/dist/oplus-region-unlock.jar"
+cp "$project_dir/README.md" "$pc_root/README.md"
+chmod 0755 "$pc_root/pc/region_unlock.py"
+(
+    cd "$build_dir/pc"
+    zip -q -r "$dist_dir/$pc_archive" "oplus-region-unlock-pc-v$version"
 )
 
 (
     cd "$dist_dir"
     sha256sum oplus-region-unlock.jar \
-        oplus-region-unlock-magisk-v0.1.0.zip > SHA256SUMS
+        "$module_archive" "$pc_archive" > SHA256SUMS
 )
 echo "Built:"
 sed 's/^/  /' "$dist_dir/SHA256SUMS"

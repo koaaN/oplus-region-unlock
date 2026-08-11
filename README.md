@@ -137,8 +137,13 @@ Running `./build.sh` creates:
 ```text
 dist/oplus-region-unlock.jar
 dist/oplus-region-unlock-magisk-v0.1.0.zip
+dist/oplus-region-unlock-pc-v0.1.0.zip
 dist/SHA256SUMS
 ```
+
+The PC ZIP is self-contained: extract it and run
+`python3 pc/region_unlock.py ...` from its top-level directory. The Magisk ZIP
+can be installed directly through the Magisk app.
 
 Validate them with:
 
