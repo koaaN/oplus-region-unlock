@@ -1,0 +1,4 @@
+#!/system/bin/sh
+
+CLASSPATH=/system/etc/oplus-region-unlock.jar \
+    exec app_process /system/bin dev.op15.regionunlock.RegionUnlock "$@"

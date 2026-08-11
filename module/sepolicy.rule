@@ -1,0 +1,6 @@
+# The payload runs in Magisk's domain. These are intentionally limited to
+# locating the radio AIDL service and making a Binder call to qcrilNrd (rild).
+allow magisk hal_radio_service:service_manager find
+allow magisk rild:binder { call transfer }
+allow magisk radio_service:service_manager find
+allow magisk radio:binder { call transfer }
