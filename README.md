@@ -38,53 +38,104 @@ A successful modem result is expected to contain:
 operation=2 state=0 result=0
 ```
 
-## Requirements
+## Before you start
 
-For PC/ADB operation:
+The phone must be rooted for either method. The tool cannot operate through
+ADB alone without working `su` access.
 
-- Linux, macOS, or Windows with Python 3.10 or newer;
-- Android Platform Tools (`adb`);
-- USB debugging enabled;
-- working device root through `su`.
-
-For local builds:
-
-- JDK 17 or newer;
-- `android.jar` and `d8` from an Android SDK or AOSP checkout;
-- `zip` and `sha256sum`.
+Installing or extracting a package **does not unlock anything by itself**. You
+must run the command labelled **Send AUTO_UNLOCK** in one of the guides below.
+Commands containing `--probe` or `--status` only read information and do not
+send the unlock request.
 
 The implementation is based on Oplus 16.0.9.400. Other releases may use a
 different transaction layout and must be verified before use.
 
-## Quick start over ADB
+## Method 1: PC with ADB
 
-Build the payload if `dist/` is not already present:
+Use this method if you want the easiest setup and a shareable diagnostic
+report. It does not install anything permanently on the phone.
 
-```sh
-./build.sh
-```
+### Requirements
 
-Connect the rooted phone and perform non-mutating checks first:
+- Linux, macOS, or Windows with Python 3.10 or newer;
+- [Android Platform Tools](https://developer.android.com/tools/releases/platform-tools)
+  with `adb` available in the terminal;
+- USB debugging enabled and authorized on the phone;
+- working device root through `su`.
+
+### Step 1: Download and extract the PC package
+
+Download `oplus-region-unlock-pc-v0.1.0.zip` from the
+[latest release](https://github.com/koaaN/oplus-region-unlock/releases/latest)
+and extract it. Open a terminal in the extracted
+`oplus-region-unlock-pc-v0.1.0` directory.
+
+If you cloned the source repository instead, run `./build.sh` first and use
+the repository root as the working directory.
+
+On Windows, use `py -3` in place of `python3` in the commands below.
+
+### Step 2: Connect and check the phone
 
 ```sh
 adb devices
+adb shell su -c 'id -u'
+```
+
+Accept the USB debugging and root prompts on the phone. The first command must
+show the phone as `device`; the second must print `0`.
+
+### Step 3: Run safe checks
+
+```sh
 python3 pc/region_unlock.py --probe --report
 python3 pc/region_unlock.py --status --report
 ```
 
-Queue AUTO_UNLOCK on slot 0 and capture a diagnostic report:
+`--probe` checks that the expected radio service and Binder descriptor exist.
+`--status` reads the framework's cached region-lock state. Neither command
+sends AUTO_UNLOCK.
+
+### Step 4: Send AUTO_UNLOCK
+
+For the primary SIM/radio slot, run:
 
 ```sh
 python3 pc/region_unlock.py --slot 0 --report
 ```
 
-If several devices are attached, select one explicitly:
+**This is the command that sends AUTO_UNLOCK.** Omitting both `--probe` and
+`--status` selects the unlock action. Use `--slot 1` only when targeting the
+second radio slot on a dual-SIM device.
+
+The default `--operator auto` is recommended. It preserves the operator value
+cached by the phone process and falls back to `0` if that value is unavailable.
+
+### Step 5: Reboot and verify
+
+```sh
+adb reboot
+adb wait-for-device
+python3 pc/region_unlock.py --status --report
+```
+
+The framework cache may not refresh until after a reboot. A successful result
+is expected to contain:
+
+```text
+operation=2 state=0 result=0
+```
+
+Here, `2` is the AUTO_UNLOCK operation code; `0` is the expected resulting
+state. A message saying the one-way Binder request was queued does not by
+itself prove that the modem accepted it.
+
+If several phones are attached, add `--device SERIAL` to every Python command:
 
 ```sh
 python3 pc/region_unlock.py --device SERIAL --slot 0 --report
 ```
-
-The launcher prints the generated report path when it finishes.
 
 ## Diagnostic reports
 
@@ -108,19 +159,52 @@ The report filters unrelated logs and applies best-effort redaction to
 IMEI/IMSI/ICCID-like values, phone numbers, long numeric identifiers, and MAC
 addresses. Always review a report before publishing it.
 
-## Magisk module
+## Method 2: Magisk module
 
-Build and install `dist/oplus-region-unlock-magisk-v0.1.0.zip` through the
-Magisk app. After rebooting:
+Use this method if you want the `region-unlock` command installed on the phone.
+Installing the module alone does not send AUTO_UNLOCK.
+
+### Step 1: Install the module
+
+1. Download `oplus-region-unlock-magisk-v0.1.0.zip` from the
+   [latest release](https://github.com/koaaN/oplus-region-unlock/releases/latest).
+   Do not extract it.
+2. Open Magisk, select **Modules**, then **Install from storage**.
+3. Select the downloaded ZIP and reboot when installation finishes.
+
+### Step 2: Run safe checks
+
+Open an Android terminal app, or run `adb shell` from a PC, then execute:
 
 ```sh
 su -c 'region-unlock --probe'
 su -c 'region-unlock --status'
+```
+
+These commands check the radio service and current cached status. They do not
+send AUTO_UNLOCK.
+
+### Step 3: Send AUTO_UNLOCK
+
+```sh
 su -c 'region-unlock --slot 0'
 ```
 
-Installing the module does not automatically send AUTO_UNLOCK. To opt into one
-attempt after every completed boot:
+**This is the command that sends AUTO_UNLOCK.** Use `--slot 1` only for the
+second radio slot. Reboot the phone after the command completes.
+
+### Step 4: Verify after reboot
+
+```sh
+su -c 'region-unlock --status'
+```
+
+The expected successful state is `operation=2 state=0 result=0`.
+
+### Optional: run once after every boot
+
+Manual execution is recommended first. To opt into one automatic attempt after
+every completed boot:
 
 ```sh
 su -c 'mkdir -p /data/adb/region-unlock; touch /data/adb/region-unlock/auto'
@@ -128,9 +212,25 @@ su -c 'mkdir -p /data/adb/region-unlock; touch /data/adb/region-unlock/auto'
 
 The most recent boot attempt is written to
 `/data/adb/region-unlock/last.log`. Remove the `auto` marker to disable boot
-execution.
+execution:
 
-## Build outputs
+```sh
+su -c 'rm -f /data/adb/region-unlock/auto'
+```
+
+To copy the root-only boot log to a connected PC:
+
+```sh
+adb exec-out su -c 'cat /data/adb/region-unlock/last.log' > region-unlock-boot.log
+```
+
+For a filtered, redacted report from a manual attempt, use the PC method with
+`--report` instead.
+
+## Building from source
+
+Local builds require JDK 17 or newer, `android.jar`, `d8`, `zip`, and
+`sha256sum`.
 
 Running `./build.sh` creates:
 
@@ -171,23 +271,6 @@ Validate them with:
 - This project does not generate sale unlock credentials, patch signed region
   data, forge a modem response, or implement the separate `state=2` sale-unlock
   flow.
-
-## Suggested end-to-end verification
-
-```sh
-python3 pc/region_unlock.py --probe --report
-python3 pc/region_unlock.py --status --report
-python3 pc/region_unlock.py --slot 0 --report
-adb reboot
-adb wait-for-device
-python3 pc/region_unlock.py --status --report
-```
-
-The final status should report:
-
-```text
-operation=2 state=0 result=0
-```
 
 ## Project layout
 
