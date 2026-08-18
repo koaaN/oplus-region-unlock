@@ -2,8 +2,8 @@ plugins {
     id("com.android.application")
 }
 
-val appVersionCode = System.getenv("REGION_UNLOCK_VERSION_CODE")?.toIntOrNull() ?: 3
-val appVersionName = System.getenv("REGION_UNLOCK_VERSION_NAME") ?: "0.3.0"
+val appVersionCode = System.getenv("REGION_UNLOCK_VERSION_CODE")?.toIntOrNull() ?: 4
+val appVersionName = System.getenv("REGION_UNLOCK_VERSION_NAME") ?: "0.4.0"
 
 android {
     namespace = "dev.op13.regionunlock.app"

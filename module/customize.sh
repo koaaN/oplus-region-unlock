@@ -1,6 +1,6 @@
 #!/system/bin/sh
 
-ui_print "- Installing the OnePlus 13/15 one-shot region unlocker"
+ui_print "- Installing the supported OnePlus one-shot region unlocker"
 ui_print "- Reboot once to start the unlock"
 ui_print "- The phone will automatically reboot one more time"
 ui_print "- The module then removes itself; its log is kept at:"

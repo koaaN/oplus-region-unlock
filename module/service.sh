@@ -38,11 +38,11 @@ echo "build=$(getprop ro.build.version.incremental)"
 echo "project-id=$PROJECT_ID"
 
 case "$PROJECT_ID" in
-    23821|24831)
+    23821|24831|24851)
         echo "device-supported=1"
         ;;
     *)
-        echo "error: unsupported project; expected 23821 (OnePlus 13) or 24831 (OnePlus 15)"
+        echo "error: unsupported project; expected 23821 (OnePlus 13), 24831 (OnePlus 15), or 24851 (OnePlus Ace 6)"
         touch "$MODULE_DIR/remove"
         echo "module-removal=pending-next-reboot"
         exit 1

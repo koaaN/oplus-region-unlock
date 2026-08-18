@@ -17,7 +17,7 @@ import java.util.Base64;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-/** Root/app_process client for the OnePlus 13/15 region-lock subsystem. */
+/** Root/app_process client for supported OnePlus region-lock subsystems. */
 public final class RegionUnlock {
     private static final String RADIO_MANAGER = "com.oplus.telephony.RadioManager";
     private static final String VENDOR_SERVICE_PREFIX =

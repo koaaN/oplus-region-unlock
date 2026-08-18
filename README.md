@@ -1,9 +1,9 @@
-# OnePlus 13/15 Region Unlock Client
+# OnePlus Region Unlock Client
 
-Root tooling for reading and invoking the stock OnePlus 13 and OnePlus 15
-OxygenOS region-lock subsystem. It includes a rooted Android app, a PC/ADB
-launcher, an Android DEX/JAR payload, a one-shot Magisk/KernelSU/APatch module,
-and shareable diagnostic reports.
+Root tooling for reading and invoking the stock region-lock subsystem on the
+OnePlus 13, OnePlus 15, and OnePlus Ace 6. It includes a rooted Android app, a
+PC/ADB launcher, an Android DEX/JAR payload, a one-shot
+Magisk/KernelSU/APatch module, and shareable diagnostic reports.
 
 The OnePlus 13 path was traced and tested against OxygenOS
 16.0.2.402(EX01). The extracted OnePlus 15 stock framework confirms the same
@@ -21,7 +21,7 @@ path: `RegionLockController.unlockRegionlock()` sends `(operator, 2, 0)`,
 > The root module intentionally causes one automatic follow-up reboot. This is
 > required for the modem to reload the unlocked state.
 
-## What the OnePlus 13 and 15 use
+## Stock region-lock path
 
 The public stock API is `com.oplus.telephony.RadioManager`, backed by the
 `com.oplus.telephony.ISubsysRadio` system service. Its region-lock commands are:
@@ -62,11 +62,11 @@ already be installed.
 
 ### Install
 
-1. Download `oplus-region-unlock-app-v0.3.0-debug.apk`.
+1. Download `oplus-region-unlock-app-v0.4.0-debug.apk`.
 2. Install it with Android's package installer, or run:
 
 ```sh
-adb install -r oplus-region-unlock-app-v0.3.0-debug.apk
+adb install -r oplus-region-unlock-app-v0.4.0-debug.apk
 ```
 
 3. Open **Region Unlock**.
@@ -78,12 +78,15 @@ region-service state read before enabling an action:
 |---|---|---|---:|
 | OnePlus 13 | `PJZ110` | `CPH2653` | `23821` |
 | OnePlus 15 | `PLK110` | `CPH2745` | `24831` |
+| OnePlus Ace 6 | Not yet verified | — | `24851` |
 
 The OnePlus 15 identity gate was verified on the connected `PLK110` custom-ROM
 device. A custom ROM may preserve the vendor HAL while omitting the stock
 `RadioManager` framework layer, so actual state reads and changes require a
 compatible stock OxygenOS/ColorOS framework plus root. If that read fails,
 both state-changing actions remain disabled even when root is available.
+The Ace 6 identity gate is included from PRJ-ID `24851`; its complete stock-ROM
+read and unlock path still requires validation on an Ace 6.
 
 ### Unlock
 
@@ -117,13 +120,13 @@ This method does not permanently install anything on the phone.
 - Android Platform Tools (`adb`);
 - USB debugging enabled and authorized;
 - Magisk or KernelSU root with a working `su` command;
-- a supported OnePlus 13 or OnePlus 15 running a compatible stock
+- a supported OnePlus 13, OnePlus 15, or OnePlus Ace 6 running a compatible stock
   OxygenOS/ColorOS build.
 
 ### 1. Download and extract
 
-Download `oplus-region-unlock-pc-v0.3.0.zip` from the release and extract
-it. Open a terminal in the extracted `oplus-region-unlock-pc-v0.3.0` folder.
+Download `oplus-region-unlock-pc-v0.4.0.zip` from the release and extract
+it. Open a terminal in the extracted `oplus-region-unlock-pc-v0.4.0` folder.
 
 If using a source checkout instead, build it first:
 
@@ -236,7 +239,7 @@ and automatically reboots once more so the modem loads state `0`.
 
 ### 1. Install
 
-1. Download `oplus-region-unlock-magisk-v0.3.0.zip`.
+1. Download `oplus-region-unlock-magisk-v0.4.0.zip`.
 2. Open Magisk or KernelSU's module manager.
 3. Select **Install from storage**, choose the ZIP, and reboot.
 
@@ -302,8 +305,8 @@ Output:
 
 ```text
 dist/oplus-region-unlock.jar
-dist/oplus-region-unlock-magisk-v0.3.0.zip
-dist/oplus-region-unlock-pc-v0.3.0.zip
+dist/oplus-region-unlock-magisk-v0.4.0.zip
+dist/oplus-region-unlock-pc-v0.4.0.zip
 dist/SHA256SUMS
 ```
 
@@ -316,16 +319,17 @@ ANDROID_SDK_ROOT=/path/to/android-sdk JAVA_HOME=/path/to/jdk21 ./build-app.sh
 Additional output:
 
 ```text
-dist/oplus-region-unlock-app-v0.3.0-debug.apk
+dist/oplus-region-unlock-app-v0.4.0-debug.apk
 ```
 
 ## Safety and implementation notes
 
 - The PC client requires an explicit action. The root-module package is the one
   intentional exception: installing it opts into one AUTO_UNLOCK boot action.
-- The Android app accepts actions only on PRJ-ID `23821` (OnePlus 13) or
-  `24831` (OnePlus 15), requires root and a successful stock status read,
-  disables repeat unlocks in state `0`, and keeps reboot as a separate action.
+- The Android app accepts actions only on PRJ-ID `23821` (OnePlus 13), `24831`
+  (OnePlus 15), or `24851` (OnePlus Ace 6), requires root and a successful
+  stock status read, disables repeat unlocks in state `0`, and keeps reboot as
+  a separate action.
 - A persistent attempt marker prevents duplicate modem requests if the boot
   script is interrupted.
 - The module uses the root manager's standard `remove` marker and retains only

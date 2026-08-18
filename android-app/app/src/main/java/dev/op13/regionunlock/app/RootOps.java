@@ -18,6 +18,7 @@ final class RootOps {
     private static final String SU = "/system/bin/su";
     private static final String OP13_PROJECT_ID = "23821";
     private static final String OP15_PROJECT_ID = "24831";
+    private static final String ACE6_PROJECT_ID = "24851";
     private static final Pattern STATE_PATTERN = Pattern.compile("\\bstate=(-?\\d+)\\b");
     private static final Pattern OPERATOR_PATTERN = Pattern.compile("\\boperator=(-?\\d+)\\b");
     private static final Pattern OPERATION_PATTERN = Pattern.compile("\\boperation=(-?\\d+)\\b");
@@ -96,7 +97,9 @@ final class RootOps {
     }
 
     private static boolean isSupportedProject(String project) {
-        return OP13_PROJECT_ID.equals(project) || OP15_PROJECT_ID.equals(project);
+        return OP13_PROJECT_ID.equals(project)
+                || OP15_PROJECT_ID.equals(project)
+                || ACE6_PROJECT_ID.equals(project);
     }
 
     private static String marketingName(String project) {
@@ -105,6 +108,9 @@ final class RootOps {
         }
         if (OP15_PROJECT_ID.equals(project)) {
             return "OnePlus 15";
+        }
+        if (ACE6_PROJECT_ID.equals(project)) {
+            return "OnePlus Ace 6";
         }
         return "";
     }
@@ -116,11 +122,16 @@ final class RootOps {
         if (OP15_PROJECT_ID.equals(project)) {
             return "PLK110 / OnePlus 15";
         }
+        if (ACE6_PROJECT_ID.equals(project)) {
+            return "OnePlus Ace 6";
+        }
         return fallback;
     }
 
     private static String expectedProjects() {
-        return OP13_PROJECT_ID + " (OnePlus 13) or " + OP15_PROJECT_ID + " (OnePlus 15)";
+        return OP13_PROJECT_ID + " (OnePlus 13), "
+                + OP15_PROJECT_ID + " (OnePlus 15), or "
+                + ACE6_PROJECT_ID + " (OnePlus Ace 6)";
     }
 
     static String deviceInfo() {

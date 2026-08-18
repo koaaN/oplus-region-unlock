@@ -1,7 +1,7 @@
 # Region Unlock Android app
 
-This is an installable, root-assisted Android front end for the OnePlus 13/15
-region-lock client. Its interface follows the DeepTest 2.0 Android app's dark
+This is an installable, root-assisted Android front end for supported OnePlus
+region-lock clients. Its interface follows the DeepTest 2.0 Android app's dark
 cards, purple controls, status rows, bottom navigation and confirmation sheet.
 
 The app contains no root exploit. Magisk, KernelSU or APatch must already be
@@ -18,8 +18,8 @@ region action.
 
 Safety gates:
 
-- only PRJ-ID `23821` (`PJZ110 / OnePlus 13`) or `24831`
-  (`PLK110 / OnePlus 15`) is accepted;
+- only PRJ-ID `23821` (`PJZ110 / OnePlus 13`), `24831`
+  (`PLK110 / OnePlus 15`), or `24851` (`OnePlus Ace 6`) is accepted;
 - root and a successful stock region-service state read are required before
   either state-changing action is enabled;
 - state `0` is shown as **Already unlocked** and cannot be unlocked again;
@@ -41,11 +41,11 @@ JAVA_HOME=/path/to/jdk21 ANDROID_SDK_ROOT=/path/to/android-sdk ./build-app.sh
 Output:
 
 ```text
-dist/oplus-region-unlock-app-v0.3.0-debug.apk
+dist/oplus-region-unlock-app-v0.4.0-debug.apk
 ```
 
 Install with:
 
 ```sh
-adb install -r dist/oplus-region-unlock-app-v0.3.0-debug.apk
+adb install -r dist/oplus-region-unlock-app-v0.4.0-debug.apk
 ```
