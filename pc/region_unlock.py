@@ -163,11 +163,25 @@ def main() -> int:
     parser.add_argument("--slot", type=int, choices=(0, 1), default=0)
     parser.add_argument("--wait", type=int, default=15, metavar="SECONDS")
     parser.add_argument("--probe", action="store_true", help="only validate the service and descriptor")
-    parser.add_argument("--status", action="store_true", help="only read the current OP13 state")
+    parser.add_argument("--status", action="store_true", help="only read the current OnePlus state")
+    parser.add_argument(
+        "--policy", action="store_true", help="decode the active region-lock policy (read-only)"
+    )
+    parser.add_argument(
+        "--settings", action="store_true", help="read retry and assistant settings (read-only)"
+    )
+    parser.add_argument(
+        "--test-info", action="store_true", help="read matcher progress counters (read-only)"
+    )
     parser.add_argument(
         "--auto-unlock",
         action="store_true",
         help="send the stock AUTO_UNLOCK request (successful state: 0)",
+    )
+    parser.add_argument(
+        "--lock-state",
+        action="store_true",
+        help="send the stock LOCK_STATE request (expected state: 1)",
     )
     parser.add_argument(
         "--unlock-code",
@@ -195,12 +209,16 @@ def main() -> int:
     actions = sum((
         args.probe,
         args.status,
+        args.policy,
+        args.settings,
+        args.test_info,
         args.auto_unlock,
+        args.lock_state,
         args.unlock_code is not None,
         args.signed_blob is not None,
     ))
     if actions != 1:
-        parser.error("choose exactly one action: --probe, --status, --auto-unlock, --unlock-code, or --signed-blob")
+        parser.error("choose exactly one action: --probe, --status, --policy, --settings, --test-info, --auto-unlock, --lock-state, --unlock-code, or --signed-blob")
 
     project = Path(__file__).resolve().parents[1]
     payload = project / "dist" / "oplus-region-unlock.jar"
@@ -240,8 +258,16 @@ def main() -> int:
         java_args.append("--probe")
     if args.status:
         java_args.append("--status")
+    if args.policy:
+        java_args.append("--policy")
+    if args.settings:
+        java_args.append("--settings")
+    if args.test_info:
+        java_args.append("--test-info")
     if args.auto_unlock:
         java_args.append("--auto-unlock")
+    if args.lock_state:
+        java_args.append("--lock-state")
     if args.unlock_code is not None:
         java_args += ["--unlock-code", args.unlock_code]
     if args.signed_blob is not None:
@@ -258,13 +284,21 @@ def main() -> int:
         if args.probe
         else "status"
         if args.status
+        else "policy"
+        if args.policy
+        else "settings"
+        if args.settings
+        else "test_info"
+        if args.test_info
         else "auto_unlock"
         if args.auto_unlock
+        else "lock_state"
+        if args.lock_state
         else "local_unlock"
         if args.unlock_code is not None
         else "signed_blob"
     )
-    requested_operator = "current" if args.auto_unlock else "stock API"
+    requested_operator = "current" if args.auto_unlock else "0" if args.lock_state else "stock API"
     destination = report_path(args.report, project) if wants_report else None
     properties: dict[str, str] = {}
     tool_output = ""
@@ -299,7 +333,21 @@ def main() -> int:
             tool_output = result.stdout or ""
             if tool_output:
                 print(tool_output, end="" if tool_output.endswith("\n") else "\n")
-            time.sleep(2.5 if action in ("auto_unlock", "local_unlock", "signed_blob") else 0.3)
+        if args.settings:
+            retry_setting = run(
+                adb + ["shell", "settings", "get", "global", "region_max_retry_time"],
+                capture=True,
+            )
+            retry_value = retry_setting.stdout.strip()
+            if retry_setting.returncode != 0 or retry_value in ("", "null"):
+                retry_line = "configured-max-retry-time=10 (stock default; setting is unset)"
+            else:
+                retry_line = f"configured-max-retry-time={retry_value}"
+            print(retry_line)
+            if wants_report:
+                tool_output += ("" if tool_output.endswith("\n") else "\n") + retry_line + "\n"
+        if wants_report:
+            time.sleep(2.5 if action in ("auto_unlock", "lock_state", "local_unlock", "signed_blob") else 0.3)
             status_result = run(
                 system_uid_command(adb, ["--slot", str(args.slot), "--status"]),
                 capture=True,

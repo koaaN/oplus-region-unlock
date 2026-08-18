@@ -123,8 +123,10 @@ chmod 0755 "$pc_root/pc/region_unlock.py"
 
 (
     cd "$dist_dir"
-    sha256sum oplus-region-unlock.jar \
-        "$module_archive" "$pc_archive" > SHA256SUMS
+    checksum_files=(oplus-region-unlock.jar "$module_archive" "$pc_archive")
+    app_apk="oplus-region-unlock-app-v$version-debug.apk"
+    [[ -f "$app_apk" ]] && checksum_files+=("$app_apk")
+    sha256sum "${checksum_files[@]}" > SHA256SUMS
 )
 echo "Built:"
 sed 's/^/  /' "$dist_dir/SHA256SUMS"

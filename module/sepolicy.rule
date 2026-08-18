@@ -1,6 +1,6 @@
 # The launcher changes to Android UID 1000 while retaining the root provider's
 # SELinux domain. Allow only the stock subsystem and radio Binder paths used by
-# RadioManager and the OP13 subsystem-radio HAL.
+# RadioManager and the OnePlus subsystem-radio HAL.
 allow magisk hal_subsys_service:service_manager find
 allow magisk rild:binder { call transfer }
 allow magisk radio_service:service_manager find

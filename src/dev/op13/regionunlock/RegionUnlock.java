@@ -17,7 +17,7 @@ import java.util.Base64;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-/** Root/app_process client for the OnePlus 13 region-lock subsystem. */
+/** Root/app_process client for the OnePlus 13/15 region-lock subsystem. */
 public final class RegionUnlock {
     private static final String RADIO_MANAGER = "com.oplus.telephony.RadioManager";
     private static final String VENDOR_SERVICE_PREFIX =
@@ -27,7 +27,9 @@ public final class RegionUnlock {
     private static final int TRANSACTION_SET_REGION_LOCK_STATUS = 294;
 
     private static final int OPERATION_AUTO_UNLOCK = 2;
+    private static final int OPERATION_LOCK_STATE = 3;
     private static final int DATA_UNLOCK = 0;
+    private static final int DATA_LOCK = 1;
     private static final int TLV_TAG_STATUS = 1;
     private static final int EXPECTED_UID = 1000;
 
@@ -63,7 +65,7 @@ public final class RegionUnlock {
             System.exit(64);
         } catch (SecurityException e) {
             System.err.println("permission denied: " + rootMessage(e));
-            System.err.println("The OP13 subsystem call must run as Android UID 1000.");
+            System.err.println("The OnePlus subsystem call must run as Android UID 1000.");
             System.exit(5);
         } catch (Throwable t) {
             System.err.println("region-unlock failed: " + rootMessage(t));
@@ -81,8 +83,24 @@ public final class RegionUnlock {
             printState("region-lock-state", getState());
             return;
         }
+        if (options.policy) {
+            printPolicy();
+            return;
+        }
+        if (options.settings) {
+            printSettings();
+            return;
+        }
+        if (options.testInfo) {
+            printTestInfo();
+            return;
+        }
         if (options.autoUnlock) {
             autoUnlock();
+            return;
+        }
+        if (options.lockState) {
+            lockState();
             return;
         }
         if (options.unlockCode != null) {
@@ -107,7 +125,7 @@ public final class RegionUnlock {
             throw new IllegalStateException("unexpected descriptor: " + descriptor);
         }
         State state = getState();
-        System.out.println("OK: OP13 region-lock subsystem is available");
+        System.out.println("OK: OnePlus region-lock subsystem is available");
         System.out.println("uid=" + Process.myUid());
         System.out.println("slot=" + options.slot);
         System.out.println("vendor-service=" + serviceName);
@@ -128,10 +146,81 @@ public final class RegionUnlock {
         return State.from(info);
     }
 
+    private void printPolicy() throws Exception {
+        State state = getState();
+        printState("region-lock-state", state);
+        System.out.println("policy-mask=" + state.policyMask);
+        System.out.println("mcc-list=" + state.blacklistMcc);
+        PolicyMask.fromHex(state.policyMask).print();
+    }
+
+    private void printSettings() throws Exception {
+        Callback callback = invokeManager(
+                "getRegionLockSettingData",
+                new Class<?>[]{Message.class},
+                new Object[]{});
+        callback.requireSuccess("getRegionLockSettingData");
+        String hex = callback.bundle.getString("keyString");
+        if (hex == null) {
+            throw new IllegalStateException("getRegionLockSettingData returned no data");
+        }
+        byte[] data = decodeHex(hex);
+        System.out.println("settings-hex=" + hex);
+        System.out.println("settings-length=" + data.length);
+        if (data.length > 0) {
+            System.out.println("assistant-status=" + (data[0] & 0xff));
+        }
+        if (data.length > 1) {
+            System.out.println("retry-times=" + (data[1] & 0xff));
+        }
+        if (data.length > 3) {
+            int unlockAttempts = ((data[2] & 0xff) << 8) | (data[3] & 0xff);
+            System.out.println("unlock-attempt-counter=" + unlockAttempts);
+        }
+    }
+
+    private void printTestInfo() throws Exception {
+        Callback callback = invokeManager(
+                "getRegionNetLockTestInfo",
+                new Class<?>[]{Message.class},
+                new Object[]{});
+        callback.requireSuccess("getRegionNetLockTestInfo");
+        Object value = callback.bundle.get("keyObject");
+        if (!(value instanceof Bundle)) {
+            System.out.println("matcher-monitor=inactive");
+            System.out.println("note=normal when the device is already unlocked");
+            return;
+        }
+        Bundle info = (Bundle) value;
+        System.out.println("matcher-monitor=active");
+        System.out.println("activation-state=" + info.getString("bitmask0", "unknown"));
+        System.out.println("service-duration-matched=" + info.getString("bitmask1", "unknown"));
+        System.out.println("call-count=" + info.getString("bitmask2", "unknown"));
+        System.out.println("call-duration-seconds=" + info.getString("bitmask3", "unknown"));
+        System.out.println("charge-count=" + info.getString("bitmask4", "unknown"));
+        System.out.println("screen-change-count=" + info.getString("bitmask5", "unknown"));
+        System.out.println("service-cell-count=" + info.getString("bitmask6", "unknown"));
+        System.out.println("roaming-sim-match=" + info.getString("bitmask7", "unknown"));
+    }
+
     private void autoUnlock() throws Exception {
         State before = getState();
         printState("before", before);
         int operator = before.operator >= 0 ? before.operator : 0;
+        sendStatusCommand(operator, OPERATION_AUTO_UNLOCK, DATA_UNLOCK, "AUTO_UNLOCK");
+        Thread.sleep(1500L);
+        printState("after", getState());
+    }
+
+    private void lockState() throws Exception {
+        printState("before", getState());
+        sendStatusCommand(0, OPERATION_LOCK_STATE, DATA_LOCK, "LOCK_STATE");
+        Thread.sleep(1500L);
+        printState("after", getState());
+    }
+
+    private void sendStatusCommand(int operator, int operation, int data, String action)
+            throws Exception {
         String serviceName = vendorServiceName();
         IBinder binder = waitForService(serviceName, options.waitSeconds);
         if (binder == null) {
@@ -143,10 +232,10 @@ public final class RegionUnlock {
         }
 
         // Stock RegionLockManager format: tag=1, big-endian length=3,
-        // value=[operator, operation=AUTO_UNLOCK, data=0].
+        // value=[operator, operation, data].
         byte[] tlv = new byte[]{
                 (byte) TLV_TAG_STATUS, 0, 3,
-                (byte) operator, (byte) OPERATION_AUTO_UNLOCK, (byte) DATA_UNLOCK
+                (byte) operator, (byte) operation, (byte) data
         };
         int serial = makeSerial();
         Parcel request = Parcel.obtain();
@@ -166,11 +255,9 @@ public final class RegionUnlock {
         if (!accepted) {
             throw new IllegalStateException("vendor Binder rejected transaction 294");
         }
-        System.out.println("AUTO_UNLOCK queued: serial=" + serial
-                + " operator=" + operator + " operation=2 data=0");
-        System.out.println("transport=OP13 subsystem-radio TLV tag 1");
-        Thread.sleep(1500L);
-        printState("after", getState());
+        System.out.println(action + " queued: serial=" + serial
+                + " operator=" + operator + " operation=" + operation + " data=" + data);
+        System.out.println("transport=OnePlus subsystem-radio TLV tag 1");
     }
 
     private void unlockWithCode(String code) throws Exception {
@@ -286,6 +373,22 @@ public final class RegionUnlock {
         return 0x7f000000 | ((int) SystemClock.elapsedRealtime() & 0x00ffffff);
     }
 
+    private static byte[] decodeHex(String value) {
+        if (value == null || (value.length() & 1) != 0) {
+            throw new IllegalArgumentException("invalid hex data");
+        }
+        byte[] result = new byte[value.length() / 2];
+        for (int i = 0; i < result.length; i++) {
+            int high = Character.digit(value.charAt(i * 2), 16);
+            int low = Character.digit(value.charAt(i * 2 + 1), 16);
+            if (high < 0 || low < 0) {
+                throw new IllegalArgumentException("invalid hex data");
+            }
+            result[i] = (byte) ((high << 4) | low);
+        }
+        return result;
+    }
+
     private static void printState(String label, State state) {
         System.out.println(label + ": " + state.summary());
         System.out.println(label + "-device: region=" + state.region
@@ -304,9 +407,13 @@ public final class RegionUnlock {
     private static void usage() {
         System.out.println("Usage: region-unlock [--slot 0|1] [--wait seconds] ACTION");
         System.out.println("Actions (choose exactly one):");
-        System.out.println("  --probe                 Validate OP13 services and read current state");
+        System.out.println("  --probe                 Validate OnePlus services and read current state");
         System.out.println("  --status                Read current region-lock state");
+        System.out.println("  --policy                Decode the active region-lock policy (read-only)");
+        System.out.println("  --settings              Read retry and assistant settings (read-only)");
+        System.out.println("  --test-info             Read matcher progress counters (read-only)");
         System.out.println("  --auto-unlock           Send stock AUTO_UNLOCK; successful state is 0");
+        System.out.println("  --lock-state            Send stock LOCK_STATE; expected state is 1");
         System.out.println("  --unlock-code CODE      Submit a provisioned local code; success is state 5");
         System.out.println("  --signed-blob BASE64    Submit a signed provisioning blob; sale success is state 2");
         System.out.println("The process must run as Android UID 1000, normally through the supplied launcher.");
@@ -336,6 +443,8 @@ public final class RegionUnlock {
         String brand = "unknown";
         String majorVersion = "unknown";
         String minorVersion = "unknown";
+        String policyMask = "unknown";
+        String blacklistMcc = "unknown";
 
         static State from(Object info) throws Exception {
             State value = new State();
@@ -347,6 +456,8 @@ public final class RegionUnlock {
             value.brand = getString(info, "getBrand", "unknown");
             value.majorVersion = getString(info, "getMajorVersion", "unknown");
             value.minorVersion = getString(info, "getMinorVersion", "unknown");
+            value.policyMask = getString(info, "getPolicyMask", "unknown");
+            value.blacklistMcc = getString(info, "getBlacklistMcc", "unknown");
             return value;
         }
 
@@ -390,12 +501,92 @@ public final class RegionUnlock {
         }
     }
 
+    private static final class PolicyMask {
+        private final String bits;
+
+        private PolicyMask(String bits) {
+            this.bits = bits;
+        }
+
+        static PolicyMask fromHex(String hex) {
+            byte[] data = decodeHex(hex);
+            StringBuilder bits = new StringBuilder(data.length * 8);
+            for (byte value : data) {
+                for (int shift = 7; shift >= 0; shift--) {
+                    bits.append(((value & 0xff) >> shift) & 1);
+                }
+            }
+            if (bits.length() < 256) {
+                throw new IllegalArgumentException("policy mask is shorter than 256 bits");
+            }
+            return new PolicyMask(bits.toString());
+        }
+
+        private boolean enabled(int bit) {
+            return bit >= 0 && bit < bits.length() && bits.charAt(bit) == '1';
+        }
+
+        private int value(int start, int end) {
+            int result = 0;
+            for (int index = start; index <= end; index++) {
+                result = (result << 1) | (enabled(index) ? 1 : 0);
+            }
+            return result;
+        }
+
+        void print() {
+            int serviceCells = value(94, 96);
+            boolean highServiceCells = enabled(97);
+            if (highServiceCells) {
+                serviceCells += value(98, 100) * 8;
+            }
+            System.out.println("ui-dialog=" + enabled(0));
+            System.out.println("ui-notification=" + enabled(1));
+            System.out.println("delay-notice=" + enabled(2) + " value=" + value(3, 10));
+            System.out.println("delay-notice-boot-count=" + enabled(11)
+                    + " value=" + value(12, 15));
+            System.out.println("message-type=" + value(16, 18));
+            System.out.println("disable-5g=" + enabled(32));
+            System.out.println("disable-calls=" + enabled(33));
+            System.out.println("disable-data=" + enabled(34));
+            System.out.println("disable-sim=" + enabled(35));
+            System.out.println("disable-wifi=" + enabled(36));
+            System.out.println("matcher-in-service=" + enabled(48)
+                    + " minutes=" + value(49, 56));
+            System.out.println("matcher-call-count=" + enabled(57)
+                    + " target=" + value(58, 65));
+            System.out.println("matcher-call-duration=" + enabled(66)
+                    + " target=" + value(67, 74));
+            System.out.println("matcher-charge-count=" + enabled(75)
+                    + " target=" + value(76, 83));
+            System.out.println("matcher-screen-changes=" + enabled(84)
+                    + " target=" + value(85, 92));
+            System.out.println("matcher-service-cells=" + enabled(93)
+                    + " target=" + serviceCells);
+            System.out.println("matcher-roaming-sim=" + enabled(129)
+                    + " mccs=" + value(130, 139) + "," + value(140, 149) + ","
+                    + value(150, 159) + "," + value(160, 169) + "," + value(170, 179));
+            System.out.println("switch-origin-match=" + enabled(180)
+                    + " value=" + value(181, 184));
+            System.out.println("mcc-mode=" + (enabled(185) ? "blacklist" : "whitelist"));
+            System.out.println("override=" + enabled(186));
+            System.out.println("test-roaming-sim=" + enabled(243)
+                    + " operator=" + value(244, 246));
+            System.out.println("test-delay=" + enabled(247)
+                    + " value=" + value(248, 254));
+        }
+    }
+
     private static final class Options {
         int slot;
         int waitSeconds = 15;
         boolean probe;
         boolean status;
+        boolean policy;
+        boolean settings;
+        boolean testInfo;
         boolean autoUnlock;
+        boolean lockState;
         String unlockCode;
         String signedBlob;
         boolean help;
@@ -410,8 +601,16 @@ public final class RegionUnlock {
                     options.probe = true;
                 } else if ("--status".equals(arg)) {
                     options.status = true;
+                } else if ("--policy".equals(arg)) {
+                    options.policy = true;
+                } else if ("--settings".equals(arg)) {
+                    options.settings = true;
+                } else if ("--test-info".equals(arg)) {
+                    options.testInfo = true;
                 } else if ("--auto-unlock".equals(arg)) {
                     options.autoUnlock = true;
+                } else if ("--lock-state".equals(arg)) {
+                    options.lockState = true;
                 } else if ("--unlock-code".equals(arg)) {
                     options.unlockCode = value(args, ++i, arg);
                 } else if ("--signed-blob".equals(arg)) {
@@ -435,7 +634,11 @@ public final class RegionUnlock {
             }
             int actions = (options.probe ? 1 : 0)
                     + (options.status ? 1 : 0)
+                    + (options.policy ? 1 : 0)
+                    + (options.settings ? 1 : 0)
+                    + (options.testInfo ? 1 : 0)
                     + (options.autoUnlock ? 1 : 0)
+                    + (options.lockState ? 1 : 0)
                     + (options.unlockCode != null ? 1 : 0)
                     + (options.signedBlob != null ? 1 : 0);
             if (actions != 1) {

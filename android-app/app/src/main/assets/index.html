@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<meta name="color-scheme" content="dark light">
+<title>Region Unlock</title>
+<style>
+:root{color-scheme:dark;--bg:#080b12;--top:#0e131e;--card:#121725;--card2:#181f2e;--line:#273047;--text:#f4f6fb;--muted:#929db3;--purple:#735cff;--purple2:#a99cff;--green:#41dda1;--red:#ff6078;--amber:#f4bd62}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif}
+button{font:inherit}.top{padding:48px 20px 17px;background:var(--top);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:14px;position:sticky;top:0;z-index:20}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}.logo{width:44px;height:44px;flex:0 0 44px;border-radius:14px;background:linear-gradient(135deg,#866fff,#6049ee);display:grid;place-items:center;box-shadow:0 8px 26px #6049ee44}
+.logo svg{width:22px;height:22px}.brand h1{font-size:18px;margin:0;white-space:nowrap}.brand p{font-size:11px;color:var(--muted);margin:3px 0 0;white-space:nowrap}
+.header-status{max-width:42%;display:grid;justify-items:end;gap:4px;text-align:right}.device{font-size:11px;line-height:1.35;font-weight:750;color:var(--green)}.device:before{content:'●';font-size:9px;margin-right:5px}.header-root{font-size:10px;line-height:1.2;font-weight:750;color:var(--muted)}.header-root:before{content:'●';font-size:8px;margin-right:5px}.header-root.ok{color:var(--green)}.header-root.bad{color:var(--red)}
+.page{padding:20px 18px calc(96px + env(safe-area-inset-bottom));max-width:680px;margin:auto}.screen.hidden{display:none}.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:14px;box-shadow:0 12px 34px #0002}
+.eyebrow{color:var(--purple2);font-size:11px;font-weight:850;letter-spacing:.13em}.title{font-size:25px;font-weight:850;margin:8px 0 6px;line-height:1.15}.subtitle{color:var(--muted);font-size:14px;line-height:1.5;margin:0}
+.hero{padding:22px}.hero-head{display:flex;align-items:flex-start;gap:15px}.hero-icon{width:52px;height:52px;flex:0 0 52px;border-radius:16px;background:#2d2554;color:#c5bcff;display:grid;place-items:center}.hero-icon svg{width:29px;height:29px}
+.state-card{display:flex;align-items:center;gap:13px;margin:18px 0 4px;padding:15px;border:1px solid var(--line);border-radius:15px;background:var(--card2)}.state-dot{width:11px;height:11px;flex:0 0 11px;border-radius:50%;background:var(--muted);box-shadow:0 0 0 5px #929db318}.state-card.ok .state-dot{background:var(--green);box-shadow:0 0 0 5px #41dda118}.state-card.bad .state-dot{background:var(--red);box-shadow:0 0 0 5px #ff607818}.state-card.warn .state-dot{background:var(--amber);box-shadow:0 0 0 5px #f4bd6218}.state-copy{min-width:0;flex:1}.state-copy small{display:block;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.09em}.state-copy strong{display:block;margin-top:3px;font-size:16px}.state-code{color:var(--muted);font:700 12px/1 monospace}
+.requirements{margin:18px 0;border:1px solid var(--line);border-radius:15px;overflow:hidden}.requirement{display:flex;align-items:center;gap:12px;padding:13px 14px;background:var(--card2)}.requirement+.requirement{border-top:1px solid var(--line)}.number{width:29px;height:29px;flex:0 0 29px;border-radius:9px;background:#2d2554;color:#c5bcff;display:grid;place-items:center;font-size:12px;font-weight:850}.requirement b,.requirement small{display:block}.requirement b{font-size:14px}.requirement small{color:var(--muted);font-size:11px;margin-top:3px}.check{margin-left:auto;color:var(--muted);font-size:18px}.check.ok{color:var(--green)}
+.button-row{display:flex;gap:9px;flex-wrap:wrap}.button{border:1px solid #303b55;border-radius:13px;padding:13px 16px;background:#20283a;color:var(--text);font-weight:800;font-size:14px}.button:active{filter:brightness(1.18)}.button.primary{border-color:transparent;background:var(--purple);color:#fff;box-shadow:0 9px 25px #735cff35}.button.wide{width:100%;padding:15px;font-size:16px;margin-top:2px}.button:disabled{opacity:.45}.button.danger{background:#552334;color:#ffb7c3;border-color:#743046}.button.success{background:#126447;color:#fff;border-color:#269c73}.button.small{padding:10px 13px;font-size:12px}
+.region-card{padding:17px}.region-card .title{font-size:22px}.region-card .subtitle{font-size:12px}.region-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:13px 0}.region-item{min-width:0;padding:9px 11px;border:1px solid var(--line);border-radius:11px;background:var(--card2)}.region-item small{display:block;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.08em}.region-item strong{display:block;margin-top:4px;color:var(--text);font:800 12px/1.15 monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.region-item.mode.ok strong{color:var(--green)}.region-item.mode.bad strong{color:var(--red)}
+.success-panel{display:none;margin-top:15px;padding:16px;border:1px solid #269c73;border-radius:15px;background:#103a2d}.success-panel.show{display:block}.success-panel strong{display:block;color:#70e7b7;font-size:17px}.success-panel p{color:#a8d7c5;font-size:13px;line-height:1.45;margin:6px 0 13px}
+.list{margin-top:17px;border:1px solid var(--line);border-radius:15px;overflow:hidden}.list-row{width:100%;border:0;border-radius:0;margin:0;padding:16px;background:var(--card2);color:var(--text);display:flex;align-items:center;text-align:left;gap:13px}.list-row:disabled{opacity:.45}.list-row+.list-row{border-top:1px solid var(--line)}.list-row svg{width:23px;height:23px;color:var(--purple2)}.list-row span{min-width:0;flex:1}.list-row b,.list-row small{display:block}.list-row b{font-size:14px}.list-row small{color:var(--muted);font-size:11px;margin-top:4px}.chevron{color:var(--muted);font-size:24px}
+.list-row.danger-row svg,.list-row.danger-row b,.list-row.danger-row .chevron{color:var(--red)}
+.switch{position:relative;width:48px;height:28px;flex:0 0 48px}.switch input{display:none}.switch i{position:absolute;inset:0;border-radius:20px;background:#30394d;transition:.2s}.switch i:before{content:'';position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}.switch input:checked+i{background:var(--purple)}.switch input:checked+i:before{transform:translateX(20px)}
+.nav{position:fixed;bottom:0;left:0;right:0;z-index:30;background:#0e131ef2;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:9px 10px calc(9px + env(safe-area-inset-bottom));backdrop-filter:blur(14px)}.nav button{min-width:76px;border:0;border-radius:14px;padding:8px 18px;background:transparent;color:var(--muted);display:grid;justify-items:center;gap:3px;font-size:10px;font-weight:750}.nav svg{width:25px;height:25px}.nav button.on{background:#2b234f;color:#fff}
+.busy{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:#05070cbc}.busy.show{display:flex}.busy-card{display:flex;align-items:center;gap:13px;padding:16px 20px;border:1px solid #5140a5;border-radius:15px;background:#17152b;box-shadow:0 16px 45px #000a;font-size:14px;font-weight:800}.spinner{width:24px;height:24px;border:3px solid #c2baff;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.dialog{position:fixed;top:var(--visual-viewport-top,0);left:0;right:0;height:var(--visual-viewport-height,100dvh);z-index:90;display:none;align-items:flex-end;justify-content:center;overflow-y:auto;overscroll-behavior:contain;padding:18px;background:#000a}.dialog.show{display:flex}.sheet{width:100%;max-width:520px;max-height:calc(var(--visual-viewport-height,100dvh) - 36px);overflow-y:auto;overscroll-behavior:contain;padding:22px;border:1px solid var(--line);border-radius:22px;background:var(--card);box-shadow:0 18px 55px #000b}.sheet-icon{width:48px;height:48px;border-radius:15px;background:#2d2554;color:#c5bcff;display:grid;place-items:center}.sheet-icon svg{width:27px;height:27px}.sheet h2{font-size:22px;margin:16px 0 8px}.sheet p{color:var(--muted);font-size:14px;line-height:1.5}.sheet-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.sheet-icon.danger{background:#552334;color:#ff9bad}.confirm-input{width:100%;margin-top:10px;padding:14px 15px;border:1px solid #743046;border-radius:13px;outline:0;background:#0c1019;color:var(--text);font:800 16px/1 system-ui;text-transform:uppercase;letter-spacing:.12em}.confirm-input:focus{border-color:var(--red);box-shadow:0 0 0 3px #ff607822}.lock-panel{display:none;margin-top:15px;padding:16px;border:1px solid #a33a52;border-radius:15px;background:#2c141c}.lock-panel.show{display:block}.lock-panel strong{display:block;color:#ff9bad;font-size:17px}.lock-panel p{color:#e4a7b2;font-size:13px;line-height:1.45;margin:6px 0 13px}
+@media (max-height:600px){.dialog{padding:8px 14px}.sheet{max-height:calc(var(--visual-viewport-height,100dvh) - 16px);padding:15px 17px;border-radius:18px}.lock-entry .sheet-icon{width:38px;height:38px;border-radius:12px}.lock-entry .sheet-icon svg{width:22px;height:22px}.lock-entry h2{font-size:19px;margin:10px 0 5px}.lock-entry p{font-size:12px;line-height:1.35;margin:5px 0}.lock-entry .confirm-input{margin-top:7px;padding:11px 13px}.lock-entry .sheet-actions{margin-top:10px}}
+body.bright{--bg:#f4f6fb;--top:#fff;--card:#fff;--card2:#f0f2f7;--line:#d5dbea;--text:#182033;--muted:#5d6880}.bright .nav{background:#fffffff2}.bright .nav button.on{background:#ddd6ff;color:#4c3cc4}.bright .success-panel{background:#dff8ed}.bright .success-panel strong{color:#13714f}.bright .success-panel p{color:#376d5a}.bright .busy-card{background:#fff;color:#182033}.bright .sheet{background:#fff}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <div class="logo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 9.8-1.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="4" y="10" width="16" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 12.8h3.7v1H10v4.4h4.3v-2.4h1v3.4H9zm5.3-1.1h1v1.1h1.1v1h-1.1v1.1h-1v-1.1h-1.1v-1h1.1zm-3 3.2h1v2.2h1v.9h-3v-.9h1z" fill="currentColor"/></svg></div>
+    <div><h1>Region Unlock</h1></div>
+  </div>
+  <div class="header-status">
+    <div id="device" class="device">Reading phone…</div>
+    <div id="rootStatus" class="header-root"><span id="rootStateText">Checking root…</span></div>
+  </div>
+</header>
+
+<main class="page">
+  <section id="unlockScreen" class="screen">
+    <div class="card hero">
+      <div class="hero-head">
+        <div class="hero-icon"><svg viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0 1 9.8-1.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="4" y="10" width="16" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 12.8h3.7v1H10v4.4h4.3v-2.4h1v3.4H9zm5.3-1.1h1v1.1h1.1v1h-1.1v1.1h-1v-1.1h-1.1v-1h1.1zm-3 3.2h1v2.2h1v.9h-3v-.9h1z" fill="currentColor"/></svg></div>
+        <div><div class="eyebrow">ONEPLUS REGION SERVICE</div><div class="title">Region status</div><p class="subtitle">Read the current stock OxygenOS region state.</p></div>
+      </div>
+
+      <div id="stateCard" class="state-card">
+        <span class="state-dot"></span>
+        <div class="state-copy"><small>CURRENT STATE</small><strong id="stateText">Not checked</strong></div>
+        <span id="stateCode" class="state-code">—</span>
+      </div>
+
+      <div class="button-row">
+        <button class="button wide" onclick="checkAll()">Refresh checks</button>
+      </div>
+    </div>
+
+    <div class="card region-card">
+      <div class="eyebrow">LIVE MODEM VALUES</div>
+      <div class="title">Region check</div>
+      <p class="subtitle">Values reported by the stock region service.</p>
+
+      <div class="region-grid">
+        <div class="region-item"><small>REGION</small><strong id="regionValue">—</strong></div>
+        <div class="region-item mode"><small>MODE</small><strong id="regionMode">—</strong></div>
+        <div class="region-item"><small>BRAND</small><strong id="regionBrand">—</strong></div>
+        <div class="region-item"><small>VERSION</small><strong id="regionVersion">—</strong></div>
+        <div class="region-item"><small>OPERATOR</small><strong id="regionOperator">—</strong></div>
+        <div class="region-item"><small>OPERATION</small><strong id="regionOperation">—</strong></div>
+        <div class="region-item"><small>STATE</small><strong id="regionState">—</strong></div>
+        <div class="region-item"><small>RESULT</small><strong id="regionResult">—</strong></div>
+      </div>
+
+      <button id="unlockButton" class="button primary wide" onclick="openUnlockDialog()">Unlock region</button>
+
+      <div id="successPanel" class="success-panel">
+        <strong>✓ Unlock request accepted</strong>
+        <p>Reboot now so the modem reloads the new region state.</p>
+        <button class="button success" onclick="rebootNow()">Reboot now</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="settingsScreen" class="screen hidden">
+    <div class="card">
+      <div class="eyebrow">DEVICE &amp; APP</div>
+      <div class="title">Settings</div>
+      <p class="subtitle">Appearance and guarded region-lock controls.</p>
+      <div class="list">
+        <div class="list-row"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span><b>Bright mode</b><small>Use a light appearance</small></span><label class="switch"><input id="brightSwitch" type="checkbox" onchange="setBright(this.checked)"><i></i></label></div>
+        <button id="lockRegionButton" class="list-row danger-row" onclick="openLockDialog()"><svg viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="4" y="10" width="16" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 14v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span><b>Lock region</b><small>Request locked state 1; reboot required</small></span><span class="chevron">›</span></button>
+      </div>
+      <div id="lockSuccessPanel" class="lock-panel">
+        <strong id="lockResultTitle">Lock request accepted</strong>
+        <p id="lockResultText">Reboot now so the modem reloads locked state 1.</p>
+        <button id="lockRebootButton" class="button danger" onclick="rebootNow()">Reboot now</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<nav class="nav">
+  <button class="on" onclick="showScreen('unlockScreen',this)"><svg viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0 1 9.8-1.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="4" y="10" width="16" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 12.8h3.7v1H10v4.4h4.3v-2.4h1v3.4H9zm5.3-1.1h1v1.1h1.1v1h-1.1v1.1h-1v-1.1h-1.1v-1h1.1zm-3 3.2h1v2.2h1v.9h-3v-.9h1z" fill="currentColor"/></svg><span>Unlock</span></button>
+  <button onclick="showScreen('settingsScreen',this)"><svg viewBox="0 0 24 24"><path d="M5 7h14M8 12h11M5 17h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="8" cy="7" r="2" fill="var(--top)" stroke="currentColor" stroke-width="1.6"/><circle cx="15" cy="12" r="2" fill="var(--top)" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="17" r="2" fill="var(--top)" stroke="currentColor" stroke-width="1.6"/></svg><span>Settings</span></button>
+</nav>
+
+<div id="busy" class="busy"><div class="busy-card"><span class="spinner"></span><span id="busyText">Working…</span></div></div>
+
+<div id="unlockDialog" class="dialog" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <div class="sheet-icon"><svg viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0 1 9.8-1.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="4" y="10" width="16" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 12.8h3.7v1H10v4.4h4.3v-2.4h1v3.4H9zm5.3-1.1h1v1.1h1.1v1h-1.1v1.1h-1v-1.1h-1.1v-1h1.1zm-3 3.2h1v2.2h1v.9h-3v-.9h1z" fill="currentColor"/></svg></div>
+    <h2>Unlock this phone's region?</h2>
+    <p>This sends OxygenOS AUTO_UNLOCK to slot 0. Root-manager approval is required, and the phone must reboot before the new state is visible.</p>
+    <div class="sheet-actions"><button class="button" onclick="closeUnlockDialog()">Cancel</button><button class="button primary" onclick="confirmUnlock()">Unlock region</button></div>
+  </div>
+</div>
+
+<div id="lockDialog1" class="dialog" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <div class="sheet-icon danger"><svg viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="4" y="10" width="16" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></div>
+    <h2>Lock this phone's region?</h2>
+    <p>This requests stock locked state 1. After reboot, SIM service may be restricted by the active OxygenOS region policy.</p>
+    <div class="sheet-actions"><button class="button" onclick="closeLockDialogs()">Cancel</button><button class="button danger" onclick="acceptLockWarningOne()">Continue</button></div>
+  </div>
+</div>
+
+<div id="lockDialog2" class="dialog" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <div class="sheet-icon danger"><svg viewBox="0 0 24 24"><path d="M12 3 21 20H3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 9v5m0 3h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+    <h2>Confirm the consequences</h2>
+    <p>Locking is a real modem-state change, not a visual app setting. You may need this unlock tool and another reboot to restore state 0.</p>
+    <div class="sheet-actions"><button class="button" onclick="backToLockWarningOne()">Back</button><button class="button danger" onclick="acceptLockWarningTwo()">I understand</button></div>
+  </div>
+</div>
+
+<div id="lockDialog3" class="dialog" role="dialog" aria-modal="true">
+  <div class="sheet lock-entry">
+    <div class="sheet-icon danger"><svg viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="4" y="10" width="16" height="11" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></div>
+    <h2>Type LOCK to continue</h2>
+    <p>Enter the exact uppercase word <b>LOCK</b>. The final button remains disabled until it matches.</p>
+    <input id="lockPhrase" class="confirm-input" type="text" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="LOCK" oninput="validateLockPhrase()">
+    <div class="sheet-actions"><button class="button" onclick="backToLockWarningTwo()">Back</button><button id="lockConfirmButton" class="button danger" disabled onclick="confirmLock()">Lock region</button></div>
+  </div>
+</div>
+
+<script>
+let callbackId=0;
+let lockConfirmations=0;
+let rootReady=false;
+let regionServiceReady=false;
+let currentRegionState=null;
+const byId=id=>document.getElementById(id);
+function parse(value){try{return JSON.parse(value)}catch(error){return{ok:false,message:'Invalid app response.',log:String(value)}}}
+function callback(handler){const name='regionCb'+(++callbackId);window[name]=value=>{try{handler(parse(value))}finally{delete window[name]}};return name}
+function setBusy(show,text='Working…'){byId('busyText').textContent=text;byId('busy').classList.toggle('show',show)}
+function syncVisualViewport(){const viewport=window.visualViewport;const height=viewport?viewport.height:window.innerHeight;const top=viewport?viewport.offsetTop:0;document.documentElement.style.setProperty('--visual-viewport-height',height+'px');document.documentElement.style.setProperty('--visual-viewport-top',top+'px')}
+function showScreen(id,button){document.querySelectorAll('.screen').forEach(x=>x.classList.add('hidden'));byId(id).classList.remove('hidden');document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('on'));button.classList.add('on')}
+function updateState(result){
+  const card=byId('stateCard');card.className='state-card';
+  const parsedState=Number(result.state);
+  const hasState=result.state!==undefined&&result.state!==null&&result.state!=='';
+  regionServiceReady=result.ok&&hasState&&Number.isFinite(parsedState);
+  currentRegionState=regionServiceReady?parsedState:null;
+  updateActions();
+  if(!result.ok){card.classList.add('bad');byId('stateText').textContent='Could not read state';byId('stateCode').textContent='ERROR';return}
+  const state=parsedState;
+  if(!Number.isFinite(state)){card.classList.add('warn');byId('stateText').textContent=result.accepted?'Reboot required':'State unavailable';byId('stateCode').textContent=result.accepted?'QUEUED':'—';return}
+  byId('stateText').textContent=result.message||'Unknown';byId('stateCode').textContent='STATE '+state;
+  card.classList.add(result.unlocked?'ok':state===1?'bad':'warn');
+}
+function regionValue(value){return value===undefined||value===null||value===''||Number(value)===-2147483648?'—':String(value)}
+function updateRegionDetails(result){
+  byId('regionValue').textContent=result.ok?regionValue(result.region):'—';
+  byId('regionBrand').textContent=result.ok?regionValue(result.brand):'—';
+  byId('regionVersion').textContent=result.ok?regionValue(result.version):'—';
+  byId('regionOperator').textContent=result.ok?regionValue(result.operator):'—';
+  byId('regionOperation').textContent=result.ok?regionValue(result.operation):'—';
+  byId('regionState').textContent=result.ok?regionValue(result.state):'—';
+  byId('regionResult').textContent=result.ok?regionValue(result.result):'—';
+  byId('regionMode').textContent=result.ok?regionValue(result.message):'Unavailable';
+  byId('regionMode').parentElement.className='region-item mode '+(result.ok?(result.unlocked?'ok':'bad'):'bad');
+}
+function updateActions(){const enabled=device.supported&&rootReady&&regionServiceReady;const unlock=byId('unlockButton');unlock.disabled=!enabled||currentRegionState===0;unlock.textContent=currentRegionState===0?'Already unlocked':'Unlock region';byId('lockRegionButton').disabled=!enabled||currentRegionState===1}
+function updateRoot(result){const status=byId('rootStatus');status.className='header-root '+(result.ok?'ok':'bad');byId('rootStateText').textContent=result.ok?'Root available':'Root unavailable';rootReady=result.ok;updateActions()}
+function showMainError(message){regionServiceReady=false;updateActions();byId('stateCard').className='state-card bad';byId('stateText').textContent=message||'Operation failed';byId('stateCode').textContent='ERROR'}
+function checkAll(){setBusy(true,'Checking root access…');const rootCb=callback(root=>{updateRoot(root);if(!root.ok){setBusy(false);updateState({ok:false});updateRegionDetails({ok:false});return}setBusy(true,'Reading region state…');const statusCb=callback(status=>{setBusy(false);updateState(status);updateRegionDetails(status)});RegionUnlock.status(statusCb)});RegionUnlock.rootCheck(rootCb)}
+function openUnlockDialog(){byId('unlockDialog').classList.add('show')}
+function closeUnlockDialog(){byId('unlockDialog').classList.remove('show')}
+function confirmUnlock(){closeUnlockDialog();setBusy(true,'Sending AUTO_UNLOCK…');const cb=callback(result=>{setBusy(false);if(result.ok){updateRoot({ok:true})}else{showMainError(result.message)}if(result.ok&&result.accepted){regionServiceReady=false;currentRegionState=null;updateActions();byId('successPanel').classList.add('show');byId('stateCard').className='state-card warn';byId('stateText').textContent='Reboot required';byId('stateCode').textContent='QUEUED'}});RegionUnlock.unlock(cb)}
+function openLockDialog(){lockConfirmations=0;byId('lockPhrase').value='';validateLockPhrase();byId('lockDialog1').classList.add('show')}
+function closeLockDialogs(){['lockDialog1','lockDialog2','lockDialog3'].forEach(id=>byId(id).classList.remove('show'));lockConfirmations=0}
+function acceptLockWarningOne(){byId('lockDialog1').classList.remove('show');lockConfirmations=1;byId('lockDialog2').classList.add('show')}
+function backToLockWarningOne(){byId('lockDialog2').classList.remove('show');lockConfirmations=0;byId('lockDialog1').classList.add('show')}
+function acceptLockWarningTwo(){if(lockConfirmations!==1)return;byId('lockDialog2').classList.remove('show');lockConfirmations=2;byId('lockDialog3').classList.add('show');setTimeout(()=>byId('lockPhrase').focus(),180)}
+function backToLockWarningTwo(){byId('lockDialog3').classList.remove('show');lockConfirmations=1;byId('lockDialog2').classList.add('show')}
+function validateLockPhrase(){byId('lockConfirmButton').disabled=byId('lockPhrase').value!=='LOCK'}
+function confirmLock(){const phrase=byId('lockPhrase').value;if(lockConfirmations!==2||phrase!=='LOCK')return;closeLockDialogs();setBusy(true,'Sending LOCK_STATE…');const cb=callback(result=>{setBusy(false);const accepted=result.ok&&result.accepted;byId('lockResultTitle').textContent=accepted?'Lock request accepted':'Lock request failed';byId('lockResultText').textContent=accepted?'Reboot now so the modem reloads locked state 1.':(result.message||'The lock request was not accepted.');byId('lockRebootButton').style.display=accepted?'':'none';byId('lockSuccessPanel').classList.add('show');if(result.ok){updateRoot({ok:true})}if(accepted){regionServiceReady=false;currentRegionState=null;updateActions();byId('stateCard').className='state-card warn';byId('stateText').textContent='Reboot required';byId('stateCode').textContent='LOCK QUEUED'}});RegionUnlock.lock(phrase,cb)}
+function rebootNow(){setBusy(true,'Rebooting…');const cb=callback(result=>{if(!result.ok){setBusy(false);showMainError(result.message)}});RegionUnlock.reboot(cb)}
+function setBright(on){document.body.classList.toggle('bright',on);localStorage.setItem('regionUnlockBright',on?'1':'0');RegionUnlock.setBrightMode(on)}
+
+syncVisualViewport();
+if(window.visualViewport){window.visualViewport.addEventListener('resize',syncVisualViewport);window.visualViewport.addEventListener('scroll',syncVisualViewport)}
+byId('lockPhrase').addEventListener('focus',()=>setTimeout(()=>byId('lockPhrase').scrollIntoView({block:'center',behavior:'smooth'}),180));
+const device=parse(RegionUnlock.deviceInfo());
+byId('device').textContent=device.supported?(device.marketingName+' · '+device.projectId):(device.model||'Unsupported device');
+updateActions();
+const bright=localStorage.getItem('regionUnlockBright')==='1';byId('brightSwitch').checked=bright;setBright(bright);
+const previous=RegionUnlock.lastResult();if(previous){const result=parse(previous);updateState(result);updateRegionDetails(result)}
+checkAll();
+</script>
+</body>
+</html>
