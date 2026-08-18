@@ -5,7 +5,9 @@ import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.webkit.JavascriptInterface;
@@ -135,6 +137,22 @@ public final class MainActivity extends Activity {
                 ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
                 clipboard.setPrimaryClip(ClipData.newPlainText("Region Unlock log", value));
                 Toast.makeText(MainActivity.this, "Log copied", Toast.LENGTH_SHORT).show();
+            });
+        }
+
+        @JavascriptInterface
+        public void openUrl(String value) {
+            if (value == null || !(value.equals("https://github.com")
+                    || value.startsWith("https://github.com/"))) {
+                return;
+            }
+            runOnUiThread(() -> {
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(value)));
+                } catch (Throwable ignored) {
+                    Toast.makeText(MainActivity.this, "No browser is available", Toast.LENGTH_SHORT)
+                            .show();
+                }
             });
         }
 
