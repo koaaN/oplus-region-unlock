@@ -36,10 +36,12 @@ region check fails and all state-changing actions remain disabled.
 
 ### On the phone
 
-1. Download `oplus-region-unlock-app-v0.4.0-debug.apk` from the latest release.
-2. Open the APK and allow installation from that source if Android asks.
-3. Open **Region Unlock**.
-4. Approve the root request from your root manager.
+1. Open the repository's **Actions** tab and select a successful **Build
+   Android app** run.
+2. Download and extract its `region-unlock-app-<commit>` artifact.
+3. Transfer `oplus-region-unlock-app-v0.4.0-debug.apk` to the phone.
+4. Open the APK and allow installation from that source if Android asks.
+5. Open **Region Unlock** and approve the root request from your root manager.
 
 ### With ADB
 
