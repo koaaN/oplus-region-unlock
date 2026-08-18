@@ -142,7 +142,7 @@ future releases from updating an already installed copy of the app.
 The build creates:
 
 ```text
-dist/oplus-region-unlock-app-v0.4.1-release.apk
+dist/oplus-region-unlock-app-v0.4.2-release.apk
 dist/SHA256SUMS
 ```
 

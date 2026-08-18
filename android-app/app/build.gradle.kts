@@ -2,8 +2,8 @@ plugins {
     id("com.android.application")
 }
 
-val appVersionCode = System.getenv("REGION_UNLOCK_VERSION_CODE")?.toIntOrNull() ?: 4001
-val appVersionName = System.getenv("REGION_UNLOCK_VERSION_NAME") ?: "0.4.1"
+val appVersionCode = System.getenv("REGION_UNLOCK_VERSION_CODE")?.toIntOrNull() ?: 4002
+val appVersionName = System.getenv("REGION_UNLOCK_VERSION_NAME") ?: "0.4.2"
 val releaseKeystore = System.getenv("REGION_UNLOCK_KEYSTORE")
 val releaseStorePassword = System.getenv("REGION_UNLOCK_STORE_PASSWORD")
 val releaseKeyAlias = System.getenv("REGION_UNLOCK_KEY_ALIAS")
