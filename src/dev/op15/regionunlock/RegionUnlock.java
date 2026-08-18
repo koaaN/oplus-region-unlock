@@ -21,8 +21,10 @@ public final class RegionUnlock {
     private static final String TELEPHONY_INTERFACE =
             "com.android.internal.telephony.IOplusTelephonyExt";
     private static final int TRANSACTION_UPDATE_REGIONLOCK_STATUS = 13;
+    private static final int OPERATOR_SALE = 2;
+    private static final int OPERATION_SALE_UNLOCK = 0;
     private static final int OPERATION_AUTO_UNLOCK = 2;
-    private static final int DATA_AUTO_UNLOCK = 0;
+    private static final int DATA_UNLOCK = 0;
 
     private RegionUnlock() {}
 
@@ -65,7 +67,12 @@ public final class RegionUnlock {
                 return;
             }
 
-            int operator = options.operator != null ? options.operator : readOperatorOrDefault();
+            int operator = options.saleUnlock
+                    ? OPERATOR_SALE
+                    : options.operator != null ? options.operator : readOperatorOrDefault();
+            int operation = options.saleUnlock
+                    ? OPERATION_SALE_UNLOCK
+                    : OPERATION_AUTO_UNLOCK;
             int serial = options.serial != null ? options.serial : makeSerial();
             Parcel request = Parcel.obtain();
             boolean accepted;
@@ -73,8 +80,8 @@ public final class RegionUnlock {
                 request.writeInterfaceToken(DESCRIPTOR);
                 request.writeInt(serial);
                 request.writeByte((byte) operator);
-                request.writeByte((byte) OPERATION_AUTO_UNLOCK);
-                request.writeByte((byte) DATA_AUTO_UNLOCK);
+                request.writeByte((byte) operation);
+                request.writeByte((byte) DATA_UNLOCK);
                 accepted = binder.transact(
                         TRANSACTION_UPDATE_REGIONLOCK_STATUS,
                         request,
@@ -89,8 +96,12 @@ public final class RegionUnlock {
                 return;
             }
 
-            System.out.println("AUTO_UNLOCK queued: serial=" + serial
-                    + " operator=" + operator + " operation=2 data=0");
+            String action = options.saleUnlock ? "SALE_UNLOCK" : "AUTO_UNLOCK";
+            System.out.println(action + " queued: serial=" + serial
+                    + " operator=" + operator + " operation=" + operation + " data=0");
+            if (options.saleUnlock) {
+                System.out.println("Experimental target: operator=2 operation=0 state=2 result=0");
+            }
             System.out.println("Note: this confirms Binder acceptance, not the asynchronous modem result.");
 
             // The stock phone callback may update its cached state after the
@@ -211,8 +222,10 @@ public final class RegionUnlock {
     private static void usage() {
         System.out.println("Usage: region-unlock [--slot 0|1] [--operator auto|0..255]");
         System.out.println("                     [--serial 1..2147483647] [--wait seconds]");
-        System.out.println("                     [--probe | --status]");
-        System.out.println("Queues updateRegionlockStatus(serial, operator, 2, 0) on the selected radio HAL.");
+        System.out.println("                     [--probe | --status | --sale-unlock]");
+        System.out.println("Default: queues AUTO_UNLOCK as (operator=current, operation=2, data=0).");
+        System.out.println("--sale-unlock: experimentally queues (operator=2, operation=0, data=0)");
+        System.out.println("               to request the stock SALE_UNLOCKED state=2 transition.");
     }
 
     private static final class FrameworkState {
@@ -242,6 +255,7 @@ public final class RegionUnlock {
         int waitSeconds = 15;
         boolean probe;
         boolean status;
+        boolean saleUnlock;
         boolean help;
 
         static Options parse(String[] args) {
@@ -254,6 +268,8 @@ public final class RegionUnlock {
                     options.probe = true;
                 } else if ("--status".equals(arg)) {
                     options.status = true;
+                } else if ("--sale-unlock".equals(arg)) {
+                    options.saleUnlock = true;
                 } else if ("--slot".equals(arg)) {
                     options.slot = parseInt(value(args, ++i, arg), arg);
                 } else if ("--operator".equals(arg)) {
@@ -279,8 +295,16 @@ public final class RegionUnlock {
             if (options.waitSeconds < 0 || options.waitSeconds > 300) {
                 throw new IllegalArgumentException("--wait must be from 0 through 300 seconds");
             }
-            if (options.probe && options.status) {
-                throw new IllegalArgumentException("--probe and --status are mutually exclusive");
+            int actions = (options.probe ? 1 : 0)
+                    + (options.status ? 1 : 0)
+                    + (options.saleUnlock ? 1 : 0);
+            if (actions > 1) {
+                throw new IllegalArgumentException(
+                        "--probe, --status, and --sale-unlock are mutually exclusive");
+            }
+            if (options.saleUnlock && options.operator != null) {
+                throw new IllegalArgumentException(
+                        "--operator cannot be used with --sale-unlock; sale operator is fixed at 2");
             }
             return options;
         }

@@ -17,7 +17,7 @@ import time
 
 REMOTE_JAR = "/data/local/tmp/oplus-region-unlock.jar"
 LOG_FILTER = re.compile(
-    r"region.?lock|updateRegionlockStatus|RIL_REQUEST_UPDATE_REGION_LOCK_STATUS|"
+    r"region.?lock|sale.?unlock|updateRegionlockStatus|RIL_REQUEST_UPDATE_REGION_LOCK_STATUS|"
     r"IRadioStable|OplusRadio|\b6050\b|\b7012\b|avc:\s*denied",
     re.IGNORECASE,
 )
@@ -145,6 +145,11 @@ def main() -> int:
     parser.add_argument("--wait", type=int, default=15, metavar="SECONDS")
     parser.add_argument("--probe", action="store_true", help="only validate the service and descriptor")
     parser.add_argument("--status", action="store_true", help="only print the phone process's cached state")
+    parser.add_argument(
+        "--sale-unlock",
+        action="store_true",
+        help="experimentally request SALE_UNLOCKED state 2 instead of AUTO_UNLOCK state 0",
+    )
     parser.add_argument("--keep", action="store_true", help="leave the temporary JAR on the device")
     parser.add_argument(
         "--report",
@@ -157,8 +162,10 @@ def main() -> int:
 
     if not 0 <= args.wait <= 300:
         parser.error("--wait must be from 0 through 300")
-    if args.probe and args.status:
-        parser.error("--probe and --status are mutually exclusive")
+    if sum((args.probe, args.status, args.sale_unlock)) > 1:
+        parser.error("--probe, --status, and --sale-unlock are mutually exclusive")
+    if args.sale_unlock and args.operator != "auto":
+        parser.error("--operator cannot be used with --sale-unlock; sale operator is fixed at 2")
 
     project = Path(__file__).resolve().parents[1]
     payload = project / "dist" / "oplus-region-unlock.jar"
@@ -196,10 +203,21 @@ def main() -> int:
         java_args.append("--probe")
     if args.status:
         java_args.append("--status")
+    if args.sale_unlock:
+        java_args.append("--sale-unlock")
     command = java_command(java_args)
 
     wants_report = args.report is not None
-    action = "probe" if args.probe else "status" if args.status else "auto_unlock"
+    action = (
+        "probe"
+        if args.probe
+        else "status"
+        if args.status
+        else "sale_unlock"
+        if args.sale_unlock
+        else "auto_unlock"
+    )
+    requested_operator = "2 (sale)" if args.sale_unlock else args.operator
     destination = report_path(args.report, project) if wants_report else None
     properties: dict[str, str] = {}
     tool_output = ""
@@ -234,7 +252,7 @@ def main() -> int:
             tool_output = result.stdout or ""
             if tool_output:
                 print(tool_output, end="" if tool_output.endswith("\n") else "\n")
-            time.sleep(2.5 if action == "auto_unlock" else 0.3)
+            time.sleep(2.5 if action in ("auto_unlock", "sale_unlock") else 0.3)
             status_result = run(
                 adb + ["shell", "su", "-c", java_command(["--status"])],
                 capture=True,
@@ -264,7 +282,7 @@ def main() -> int:
             destination,
             action=action,
             slot=args.slot,
-            requested_operator=args.operator,
+            requested_operator=requested_operator,
             payload_sha256=hashlib.sha256(payload.read_bytes()).hexdigest(),
             properties=properties,
             tool_output=tool_output,

@@ -38,6 +38,20 @@ A successful modem result is expected to contain:
 operation=2 state=0 result=0
 ```
 
+The same stock framework also defines a distinct sale-unlocked state:
+
+```text
+operator:    2 (SALE)
+operation:   0 (UNLOCK)
+data:        0
+success:     operator=2 operation=0 state=2 result=0
+```
+
+The framework explicitly handles that tuple as `sale unlock success`. Unlike
+AUTO_UNLOCK, no stock caller for this tuple is present in the phone framework;
+it appears intended for an external sales/service tool. This project therefore
+exposes it only as an explicit experimental action.
+
 ## Before you start
 
 The phone must be rooted for either method. The tool cannot operate through
@@ -227,6 +241,35 @@ adb exec-out su -c 'cat /data/adb/region-unlock/last.log' > region-unlock-boot.l
 For a filtered, redacted report from a manual attempt, use the PC method with
 `--report` instead.
 
+## Experimental: request sale-unlocked state 2
+
+State `2` is not AUTO_UNLOCK. The stock constants name it
+`SALE_UNLOCKED`, produced by sale operator `2` with unlock operation `0`.
+
+To try the state-2 request from the PC package:
+
+```sh
+python3 pc/region_unlock.py --sale-unlock --slot 0 --report
+```
+
+Or, with the Magisk module installed:
+
+```sh
+su -c 'region-unlock --sale-unlock --slot 0'
+```
+
+Then reboot and query status using the normal verification command. The target
+result is:
+
+```text
+operator=2 operation=0 state=2 result=0
+```
+
+This action sends the tuple understood by the stock modem interface; it does
+not forge a server signature or guarantee acceptance. Binder acceptance alone
+is not success. Do not combine `--sale-unlock` with `--operator`: the sale
+operator is deliberately fixed at `2`.
+
 ## Building from source
 
 Local builds require JDK 17 or newer, `android.jar`, `d8`, `zip`, and
@@ -269,8 +312,9 @@ Validate them with:
 - The Magisk policy is restricted to locating and calling the radio and phone
   Binder services required by this tool.
 - This project does not generate sale unlock credentials, patch signed region
-  data, forge a modem response, or implement the separate `state=2` sale-unlock
-  flow.
+  data, or forge a modem response. Its experimental `--sale-unlock` action only
+  submits the stock operator/operation tuple and reports the modem-derived
+  state.
 
 ## Project layout
 
