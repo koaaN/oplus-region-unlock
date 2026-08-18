@@ -179,3 +179,10 @@ android-app/                                Android application and interface
 src/dev/oplus/regionunlock/RegionUnlock.java Packaged stock-radio client
 build-app.sh                                App build and packaging script
 ```
+
+## License
+
+Copyright 2026 koaaN. Licensed under the [Apache License 2.0](LICENSE).
+
+This project is not affiliated with, endorsed by, or sponsored by OnePlus or
+Oplus. Product names and trademarks belong to their respective owners.
