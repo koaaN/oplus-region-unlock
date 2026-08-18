@@ -15,5 +15,5 @@ while [ "$(getprop sys.boot_completed)" != "1" ] && [ "$attempt" -lt 150 ]; do
     attempt=$((attempt + 1))
 done
 
-/system/bin/region-unlock --wait 60 >"$CONFIG_DIR/last.log" 2>&1
+/system/bin/region-unlock --auto-unlock --wait 60 >"$CONFIG_DIR/last.log" 2>&1
 chmod 0600 "$CONFIG_DIR/last.log"

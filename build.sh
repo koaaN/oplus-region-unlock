@@ -92,7 +92,7 @@ mkdir -p "$build_dir/classes" "$build_dir/dex" "$build_dir/module/system/etc" \
 rm -f "$dist_dir/$module_archive" "$dist_dir/$pc_archive"
 
 javac --release 8 -cp "$android_jar" -d "$build_dir/classes" \
-    "$project_dir/src/dev/op15/regionunlock/RegionUnlock.java"
+    "$project_dir/src/dev/op13/regionunlock/RegionUnlock.java"
 jar cf "$build_dir/classes.jar" -C "$build_dir/classes" .
 if [[ -n "$d8_jar" ]]; then
     java -cp "$d8_jar" com.android.tools.r8.D8 --min-api 26 --lib "$android_jar" \

@@ -1,336 +1,256 @@
-# Oplus Region Unlock HAL Client
+# OnePlus 13 Region Unlock Client
 
-Root-only diagnostic and command-line tooling for the Oplus region-lock radio
-HAL found in OxygenOS/ColorOS 16.0.9.400.
+Root tooling for reading and invoking the stock OnePlus 13 (CPH2653)
+OxygenOS region-lock subsystem. It includes a PC/ADB launcher, an Android
+DEX/JAR payload, a Magisk/KernelSU module, and shareable diagnostic reports.
 
-The project provides:
-
-- a PC-side ADB launcher;
-- a standalone Android DEX/JAR payload;
-- an installable Magisk module;
-- filtered, redacted diagnostic reports suitable for sharing.
+This OP13 branch was traced and tested against OxygenOS 16.0.2.402(EX01). It
+does **not** use the older `IRadioStable/OplusRadio0` route from the OP15
+implementation.
 
 > [!CAUTION]
-> This is experimental device-specific tooling. It invokes a stock modem
-> operation but cannot guarantee that the modem will accept it. Back up your
-> device, understand the implications of root access, and use it only on a
-> device you own or are authorized to service.
+> Use this only on a device you own or are authorized to service. A wrong local
+> unlock code may consume a modem retry. A state-2 sale unlock requires a real
+> signed provisioning blob; this project does not generate or forge one.
 
-## Confirmed protocol
+## What the OP13 uses
 
-The stock framework sends AUTO_UNLOCK through the stable Oplus radio AIDL
-service:
+The public stock API is `com.oplus.telephony.RadioManager`, backed by the
+`com.oplus.telephony.ISubsysRadio` system service. Its region-lock commands are:
 
-```text
-service:     vendor.oplus.hardware.radio.IRadioStable/OplusRadio{slot}
-descriptor:  vendor.oplus.hardware.radio.IOplusRadio
-method:      updateRegionlockStatus(int serial, byte operator, byte operation, byte data)
-transaction: 13, one-way
-arguments:   serial, operator, operation=2, data=0
-```
+| Action | Stock API/transport | Successful state |
+|---|---|---:|
+| Read status | `getRegionLockInfo("1", callback)` | unchanged |
+| Automatic unlock | subsystem-radio TLV tag 1: `[operator, 2, 0]` | `0` |
+| Local unlock code | `unlockRegionLock(0, code, callback)` | `5` |
+| Sale/provisioning unlock | `updateRegionLockBlob(base64Blob, callback)` | `2` |
 
-The service interface name and Binder descriptor differ intentionally. They
-match the stock `OplusRadioAidl` implementation.
+The vendor endpoint is
+`vendor.oplus.hardware.subsys_interface.subsys_radio.ISubsysRadio/slot1`
+(`slot2` for the second SIM), with Binder transaction 294 for the status TLV.
 
-A successful modem result is expected to contain:
+OxygenOS rejects these public API calls from root UID 0. The included launchers
+first obtain root and then execute the payload as Android system UID 1000, which
+is accepted by the stock `SubsysPermissions` check.
 
-```text
-operation=2 state=0 result=0
-```
+State values reported by the OP13 framework:
 
-The same stock framework also defines a distinct sale-unlocked state:
+| State | Meaning |
+|---:|---|
+| `-1` | invalid/test-locked |
+| `0` | auto-unlocked |
+| `1` | locked |
+| `2` | sale-unlocked |
+| `3` | server-locked |
+| `4` | server-unlocked |
+| `5` | locally unlocked with a code |
 
-```text
-operator:    2 (SALE)
-operation:   0 (UNLOCK)
-data:        0
-success:     operator=2 operation=0 state=2 result=0
-```
+## Method 1: run from a PC over ADB
 
-The framework explicitly handles that tuple as `sale unlock success`. Unlike
-AUTO_UNLOCK, no stock caller for this tuple is present in the phone framework;
-it appears intended for an external sales/service tool. This project therefore
-exposes it only as an explicit experimental action.
-
-## Before you start
-
-The phone must be rooted for either method. The tool cannot operate through
-ADB alone without working `su` access.
-
-Installing or extracting a package **does not unlock anything by itself**. You
-must run the command labelled **Send AUTO_UNLOCK** in one of the guides below.
-Commands containing `--probe` or `--status` only read information and do not
-send the unlock request.
-
-The implementation is based on Oplus 16.0.9.400. Other releases may use a
-different transaction layout and must be verified before use.
-
-## Method 1: PC with ADB
-
-Use this method if you want the easiest setup and a shareable diagnostic
-report. It does not install anything permanently on the phone.
+This method does not permanently install anything on the phone.
 
 ### Requirements
 
-- Linux, macOS, or Windows with Python 3.10 or newer;
-- [Android Platform Tools](https://developer.android.com/tools/releases/platform-tools)
-  with `adb` available in the terminal;
-- USB debugging enabled and authorized on the phone;
-- working device root through `su`.
+- Python 3.10 or newer;
+- Android Platform Tools (`adb`);
+- USB debugging enabled and authorized;
+- Magisk or KernelSU root with a working `su` command;
+- a OnePlus 13 running a compatible stock OxygenOS/ColorOS build.
 
-### Step 1: Download and extract the PC package
+### 1. Download and extract
 
-Download `oplus-region-unlock-pc-v0.1.0.zip` from the
-[latest release](https://github.com/koaaN/oplus-region-unlock/releases/latest)
-and extract it. Open a terminal in the extracted
-`oplus-region-unlock-pc-v0.1.0` directory.
+Download `oplus-region-unlock-pc-v0.2.0.zip` from the OP13 release and extract
+it. Open a terminal in the extracted `oplus-region-unlock-pc-v0.2.0` folder.
 
-If you cloned the source repository instead, run `./build.sh` first and use
-the repository root as the working directory.
+If using a source checkout instead, build it first:
 
-On Windows, use `py -3` in place of `python3` in the commands below.
+```sh
+./build.sh
+```
 
-### Step 2: Connect and check the phone
+On Windows, replace `python3` with `py -3` in the commands below.
+
+### 2. Confirm ADB and root
 
 ```sh
 adb devices
 adb shell su -c 'id -u'
+adb shell su 1000 -c 'id -u'
 ```
 
-Accept the USB debugging and root prompts on the phone. The first command must
-show the phone as `device`; the second must print `0`.
+The phone must appear as `device`. The last two commands must print `0` and
+`1000`, respectively. Accept any USB-debugging or root prompt on the phone.
 
-### Step 3: Run safe checks
+### 3. Probe the OP13 services (read-only)
 
 ```sh
 python3 pc/region_unlock.py --probe --report
+```
+
+This checks the stock subsystem service, vendor HAL descriptor, UID transition,
+and current region-lock state. It does not send an unlock command.
+
+### 4. Read the current state (read-only)
+
+```sh
 python3 pc/region_unlock.py --status --report
 ```
 
-`--probe` checks that the expected radio service and Binder descriptor exist.
-`--status` reads the framework's cached region-lock state. Neither command
-sends AUTO_UNLOCK.
-
-### Step 4: Send AUTO_UNLOCK
-
-For the primary SIM/radio slot, run:
-
-```sh
-python3 pc/region_unlock.py --slot 0 --report
-```
-
-**This is the command that sends AUTO_UNLOCK.** Omitting both `--probe` and
-`--status` selects the unlock action. Use `--slot 1` only when targeting the
-second radio slot on a dual-SIM device.
-
-The default `--operator auto` is recommended. It preserves the operator value
-cached by the phone process and falls back to `0` if that value is unavailable.
-
-### Step 5: Reboot and verify
-
-```sh
-adb reboot
-adb wait-for-device
-python3 pc/region_unlock.py --status --report
-```
-
-The framework cache may not refresh until after a reboot. A successful result
-is expected to contain:
+A working, already auto-unlocked phone typically prints:
 
 ```text
-operation=2 state=0 result=0
+region-lock-state: operator=0 operation=2 state=0 result=0 (AUTO_UNLOCKED)
 ```
 
-Here, `2` is the AUTO_UNLOCK operation code; `0` is the expected resulting
-state. A message saying the one-way Binder request was queued does not by
-itself prove that the modem accepted it.
-
-If several phones are attached, add `--device SERIAL` to every Python command:
+### 5. Send AUTO_UNLOCK
 
 ```sh
-python3 pc/region_unlock.py --device SERIAL --slot 0 --report
+python3 pc/region_unlock.py --auto-unlock --slot 0 --report
 ```
 
-## Diagnostic reports
+This is the command that changes modem state. It reads the existing operator,
+sends the stock OP13 `[operator, operation=2, data=0]` TLV, waits, and reads the
+state again. Successful AUTO_UNLOCK is `operation=2 state=0 result=0`.
 
-`--report` captures one shareable text file containing:
+Use `--slot 1` only for the second SIM slot. If more than one phone is attached,
+add `--device SERIAL` to every command.
 
-- the command output;
-- the post-command framework state;
-- focused radio, RIL, and region-lock logcat messages;
-- relevant SELinux denials;
-- device build identification;
-- the exact payload SHA-256 checksum.
-
-Reports are stored under `reports/` with a UTC timestamp. Choose a particular
-path by supplying it after the option:
+### Local unlock code (only if Oplus supplied one)
 
 ```sh
-python3 pc/region_unlock.py --slot 0 --report phone-test.txt
+python3 pc/region_unlock.py --unlock-code YOUR_CODE --slot 0 --report
 ```
 
-The report filters unrelated logs and applies best-effort redaction to
-IMEI/IMSI/ICCID-like values, phone numbers, long numeric identifiers, and MAC
-addresses. Always review a report before publishing it.
+The stock modem accepts at most 16 bytes. Do not guess codes: an incorrect code
+may consume a retry. Successful local unlock is state `5`.
 
-## Method 2: Magisk module
+### Signed sale/provisioning blob
 
-Use this method if you want the `region-unlock` command installed on the phone.
-Installing the module alone does not send AUTO_UNLOCK.
+```sh
+python3 pc/region_unlock.py --signed-blob region-lock.blob --slot 0 --report
+```
 
-### Step 1: Install the module
+The file may contain the raw binary blob or its Base64 representation. The PC
+tool converts raw input to Base64, and the phone passes the decoded data to the
+stock `setRegionLockBlob` path. The structure includes a 256-byte signature.
+Successful sale unlock is exactly:
 
-1. Download `oplus-region-unlock-magisk-v0.1.0.zip` from the
-   [latest release](https://github.com/koaaN/oplus-region-unlock/releases/latest).
-   Do not extract it.
-2. Open Magisk, select **Modules**, then **Install from storage**.
-3. Select the downloaded ZIP and reboot when installation finishes.
+```text
+operator=2 operation=0 state=2 result=0
+```
 
-### Step 2: Run safe checks
+A bare `(2, 0, 0)` tuple is deliberately not exposed as “sale unlock” because
+that is not the stock OP13 LockAssistant provisioning route.
 
-Open an Android terminal app, or run `adb shell` from a PC, then execute:
+## Method 2: install the root module
+
+Installing the module adds the `region-unlock` command. Installation alone does
+not send anything to the modem.
+
+### 1. Install
+
+1. Download `oplus-region-unlock-magisk-v0.2.0.zip`.
+2. Open Magisk or KernelSU's module manager.
+3. Select **Install from storage**, choose the ZIP, and reboot.
+
+### 2. Run read-only checks
+
+From `adb shell` or an Android terminal, run:
 
 ```sh
 su -c 'region-unlock --probe'
 su -c 'region-unlock --status'
 ```
 
-These commands check the radio service and current cached status. They do not
-send AUTO_UNLOCK.
+The launcher automatically changes from root UID 0 to system UID 1000.
 
-### Step 3: Send AUTO_UNLOCK
-
-```sh
-su -c 'region-unlock --slot 0'
-```
-
-**This is the command that sends AUTO_UNLOCK.** Use `--slot 1` only for the
-second radio slot. Reboot the phone after the command completes.
-
-### Step 4: Verify after reboot
+### 3. Send AUTO_UNLOCK
 
 ```sh
-su -c 'region-unlock --status'
+su -c 'region-unlock --auto-unlock --slot 0'
 ```
 
-The expected successful state is `operation=2 state=0 result=0`.
-
-### Optional: run once after every boot
-
-Manual execution is recommended first. To opt into one automatic attempt after
-every completed boot:
+Then verify:
 
 ```sh
-su -c 'mkdir -p /data/adb/region-unlock; touch /data/adb/region-unlock/auto'
+su -c 'region-unlock --status --slot 0'
 ```
 
-The most recent boot attempt is written to
-`/data/adb/region-unlock/last.log`. Remove the `auto` marker to disable boot
-execution:
+### 4. Optional boot execution
+
+First validate manual execution. To opt into one AUTO_UNLOCK request after each
+completed boot:
+
+```sh
+su -c 'mkdir -p /data/adb/region-unlock'
+su -c 'touch /data/adb/region-unlock/auto'
+```
+
+Read the last boot result:
+
+```sh
+su -c 'cat /data/adb/region-unlock/last.log'
+```
+
+Disable boot execution:
 
 ```sh
 su -c 'rm -f /data/adb/region-unlock/auto'
 ```
 
-To copy the root-only boot log to a connected PC:
+For a local code or signed blob, prefer the PC method so secrets do not need to
+be manually shell-escaped.
+
+## Shareable diagnostic reports
+
+Adding `--report` to a PC command writes a timestamped report under `reports/`.
+Choose a path explicitly with:
 
 ```sh
-adb exec-out su -c 'cat /data/adb/region-unlock/last.log' > region-unlock-boot.log
+python3 pc/region_unlock.py --status --report phone-status.txt
 ```
 
-For a filtered, redacted report from a manual attempt, use the PC method with
-`--report` instead.
+Reports contain the payload checksum, device build, command result, post-action
+state, focused subsystem/radio logs, and relevant SELinux denials. Common
+device identifiers are redacted on a best-effort basis. Review a report before
+publishing it.
 
-## Experimental: request sale-unlocked state 2
+## Build from source
 
-State `2` is not AUTO_UNLOCK. The stock constants name it
-`SALE_UNLOCKED`, produced by sale operator `2` with unlock operation `0`.
-
-To try the state-2 request from the PC package:
+Requirements: JDK 17 or newer, `android.jar`, `d8`, `zip`, and `sha256sum`.
 
 ```sh
-python3 pc/region_unlock.py --sale-unlock --slot 0 --report
-```
-
-Or, with the Magisk module installed:
-
-```sh
-su -c 'region-unlock --sale-unlock --slot 0'
-```
-
-Then reboot and query status using the normal verification command. The target
-result is:
-
-```text
-operator=2 operation=0 state=2 result=0
-```
-
-This action sends the tuple understood by the stock modem interface; it does
-not forge a server signature or guarantee acceptance. Binder acceptance alone
-is not success. Do not combine `--sale-unlock` with `--operator`: the sale
-operator is deliberately fixed at `2`.
-
-## Building from source
-
-Local builds require JDK 17 or newer, `android.jar`, `d8`, `zip`, and
-`sha256sum`.
-
-Running `./build.sh` creates:
-
-```text
-dist/oplus-region-unlock.jar
-dist/oplus-region-unlock-magisk-v0.1.0.zip
-dist/oplus-region-unlock-pc-v0.1.0.zip
-dist/SHA256SUMS
-```
-
-The PC ZIP is self-contained: extract it and run
-`python3 pc/region_unlock.py ...` from its top-level directory. The Magisk ZIP
-can be installed directly through the Magisk app.
-
-Validate them with:
-
-```sh
+./build.sh
 (cd dist && sha256sum -c SHA256SUMS)
 ```
 
-## Design and safety notes
+Output:
 
-- The payload validates the Binder descriptor before sending anything.
-- It never calls `setCallback()`. Replacing the callback owned by the phone
-  process can destabilize telephony.
-- The default `--operator auto` preserves the operator from the phone process's
-  cached `OplusRegionLockState`. If unavailable, it warns and falls back to `0`,
-  matching the stock controller.
-- A high changing serial reduces collision risk with live RIL requests.
-- Binder acceptance only proves that the one-way request was queued. It does
-  not prove modem acceptance.
-- Because the request originates outside the phone process, its asynchronous
-  response is not associated with a normal `RILExt` request. The framework
-  cache may remain stale until telephony performs another tracked status query,
-  often after a reboot.
-- The Magisk policy is restricted to locating and calling the radio and phone
-  Binder services required by this tool.
-- This project does not generate sale unlock credentials, patch signed region
-  data, or forge a modem response. Its experimental `--sale-unlock` action only
-  submits the stock operator/operation tuple and reports the modem-derived
-  state.
+```text
+dist/oplus-region-unlock.jar
+dist/oplus-region-unlock-magisk-v0.2.0.zip
+dist/oplus-region-unlock-pc-v0.2.0.zip
+dist/SHA256SUMS
+```
+
+## Safety and implementation notes
+
+- Every action is explicit; running the command without an action prints an
+  error and does not touch the modem.
+- Status and stock API calls run through `RadioManager` as UID 1000.
+- AUTO_UNLOCK uses the OP13 subsystem-radio service and its tag-1 TLV.
+- The tool does not replace the radio callback owned by the system process.
+- A Binder/API success is followed by a fresh state query; the printed modem
+  state, not merely “queued”, is the useful result.
+- Unlock codes and signed blobs are never printed into the diagnostic report.
+- This project does not calculate local codes, generate provisioning blobs,
+  bypass modem signature verification, or forge successful responses.
 
 ## Project layout
 
 ```text
-src/                         Android Binder client source
-pc/region_unlock.py          PC/ADB launcher and report collector
-module/                      Magisk module template
-build.sh                     Reproducible build and packaging script
+src/dev/op13/regionunlock/RegionUnlock.java  Android client
+pc/region_unlock.py                         PC/ADB launcher and reports
+module/                                     Magisk/KernelSU module template
+build.sh                                    build and packaging script
 ```
-
-Generated build products and diagnostic reports are intentionally excluded
-from Git.
-
-## Current validation status
-
-The stock transaction layout, generated DEX, shell scripts, Python launcher,
-archive structure, checksums, filtering, and report redaction have been
-validated locally. An end-to-end modem test has not yet been completed because
-no ADB device was connected during development.

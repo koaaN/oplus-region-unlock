@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 from datetime import datetime, timezone
 import hashlib
 from pathlib import Path
@@ -17,8 +19,13 @@ import time
 
 REMOTE_JAR = "/data/local/tmp/oplus-region-unlock.jar"
 LOG_FILTER = re.compile(
-    r"region.?lock|sale.?unlock|updateRegionlockStatus|RIL_REQUEST_UPDATE_REGION_LOCK_STATUS|"
-    r"IRadioStable|OplusRadio|\b6050\b|\b7012\b|avc:\s*denied",
+    r"region.?lock|sale.?unlock|SubsysPermissions|ISubsysRadio|setRegionLock|"
+    r"RadioManager|\b2328\b|\b2329\b|\b2330\b",
+    re.IGNORECASE,
+)
+SELINUX_FILTER = re.compile(
+    r"avc:\s*denied.*(?:scontext=u:r:(?:ksu|magisk)|"
+    r"tcontext=u:r:rild|hal_subsys_service|app_process|region.?lock)",
     re.IGNORECASE,
 )
 SENSITIVE_KEY_VALUE = re.compile(
@@ -40,18 +47,6 @@ def run(command: list[str], *, capture: bool = False) -> subprocess.CompletedPro
     )
 
 
-def operator(value: str) -> str:
-    if value == "auto":
-        return value
-    try:
-        number = int(value, 0)
-    except ValueError as error:
-        raise argparse.ArgumentTypeError("must be auto or an integer") from error
-    if not 0 <= number <= 255:
-        raise argparse.ArgumentTypeError("must be from 0 through 255")
-    return str(number)
-
-
 def redact(text: str) -> str:
     text = SENSITIVE_KEY_VALUE.sub(
         lambda match: f"{match.group(1)}{match.group(2)}<redacted>", text
@@ -69,12 +64,37 @@ def focused_logs(text: str) -> str:
     return redact("\n".join(lines[-1500:]))
 
 
+def focused_selinux(text: str) -> str:
+    lines = [line for line in text.splitlines() if SELINUX_FILTER.search(line)]
+    if not lines:
+        return "<no relevant SELinux denials captured>"
+    return redact("\n".join(lines[-300:]))
+
+
 def java_command(arguments: list[str]) -> str:
     return (
         f"CLASSPATH={shlex.quote(REMOTE_JAR)} "
-        "app_process /system/bin dev.op15.regionunlock.RegionUnlock "
+        "app_process /system/bin dev.op13.regionunlock.RegionUnlock "
         + " ".join(shlex.quote(value) for value in arguments)
     )
+
+
+def system_uid_command(adb: list[str], arguments: list[str]) -> list[str]:
+    return adb + ["shell", "su", "1000", "-c", java_command(arguments)]
+
+
+def load_signed_blob(path: Path) -> str:
+    raw = path.read_bytes()
+    compact = b"".join(raw.split())
+    try:
+        decoded = base64.b64decode(compact, validate=True)
+        if len(decoded) >= 256:
+            return compact.decode("ascii")
+    except (binascii.Error, UnicodeDecodeError, ValueError):
+        pass
+    if len(raw) < 256:
+        raise ValueError("blob is too short to contain its 256-byte signature")
+    return base64.b64encode(raw).decode("ascii")
 
 
 def get_property(adb: list[str], name: str) -> str:
@@ -131,7 +151,7 @@ addresses. Review it before sharing.
 {focused_logs(logcat_output)}
 
 [focused-selinux]
-{focused_logs(dmesg_output)}
+{focused_selinux(dmesg_output)}
 """
     destination.write_text(content, encoding="utf-8")
 
@@ -141,14 +161,24 @@ def main() -> int:
     parser.add_argument("--adb", default="adb", help="adb executable (default: adb)")
     parser.add_argument("--device", help="adb serial")
     parser.add_argument("--slot", type=int, choices=(0, 1), default=0)
-    parser.add_argument("--operator", type=operator, default="auto", metavar="AUTO|BYTE")
     parser.add_argument("--wait", type=int, default=15, metavar="SECONDS")
     parser.add_argument("--probe", action="store_true", help="only validate the service and descriptor")
-    parser.add_argument("--status", action="store_true", help="only print the phone process's cached state")
+    parser.add_argument("--status", action="store_true", help="only read the current OP13 state")
     parser.add_argument(
-        "--sale-unlock",
+        "--auto-unlock",
         action="store_true",
-        help="experimentally request SALE_UNLOCKED state 2 instead of AUTO_UNLOCK state 0",
+        help="send the stock AUTO_UNLOCK request (successful state: 0)",
+    )
+    parser.add_argument(
+        "--unlock-code",
+        metavar="CODE",
+        help="submit a provisioned local unlock code (successful state: 5)",
+    )
+    parser.add_argument(
+        "--signed-blob",
+        type=Path,
+        metavar="FILE",
+        help="submit a raw or Base64 signed provisioning blob (sale success: state 2)",
     )
     parser.add_argument("--keep", action="store_true", help="leave the temporary JAR on the device")
     parser.add_argument(
@@ -160,12 +190,17 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if not 0 <= args.wait <= 300:
-        parser.error("--wait must be from 0 through 300")
-    if sum((args.probe, args.status, args.sale_unlock)) > 1:
-        parser.error("--probe, --status, and --sale-unlock are mutually exclusive")
-    if args.sale_unlock and args.operator != "auto":
-        parser.error("--operator cannot be used with --sale-unlock; sale operator is fixed at 2")
+    if not 1 <= args.wait <= 300:
+        parser.error("--wait must be from 1 through 300")
+    actions = sum((
+        args.probe,
+        args.status,
+        args.auto_unlock,
+        args.unlock_code is not None,
+        args.signed_blob is not None,
+    ))
+    if actions != 1:
+        parser.error("choose exactly one action: --probe, --status, --auto-unlock, --unlock-code, or --signed-blob")
 
     project = Path(__file__).resolve().parents[1]
     payload = project / "dist" / "oplus-region-unlock.jar"
@@ -190,22 +225,32 @@ def main() -> int:
         print("error: device root was not granted", file=sys.stderr)
         return 4
 
+    system_uid = run(adb + ["shell", "su", "1000", "-c", "id -u"], capture=True)
+    if system_uid.returncode != 0 or system_uid.stdout.strip() != "1000":
+        print(system_uid.stdout.rstrip(), file=sys.stderr)
+        print("error: su could not start the payload as Android UID 1000", file=sys.stderr)
+        return 5
+
     pushed = run(adb + ["push", str(payload), REMOTE_JAR])
     if pushed.returncode != 0:
         return pushed.returncode
 
-    java_args = [
-        "--slot", str(args.slot),
-        "--operator", str(args.operator),
-        "--wait", str(args.wait),
-    ]
+    java_args = ["--slot", str(args.slot), "--wait", str(args.wait)]
     if args.probe:
         java_args.append("--probe")
     if args.status:
         java_args.append("--status")
-    if args.sale_unlock:
-        java_args.append("--sale-unlock")
-    command = java_command(java_args)
+    if args.auto_unlock:
+        java_args.append("--auto-unlock")
+    if args.unlock_code is not None:
+        java_args += ["--unlock-code", args.unlock_code]
+    if args.signed_blob is not None:
+        try:
+            encoded_blob = load_signed_blob(args.signed_blob.expanduser())
+        except (OSError, ValueError) as error:
+            print(f"error: cannot load signed blob: {error}", file=sys.stderr)
+            return 6
+        java_args += ["--signed-blob", encoded_blob]
 
     wants_report = args.report is not None
     action = (
@@ -213,11 +258,13 @@ def main() -> int:
         if args.probe
         else "status"
         if args.status
-        else "sale_unlock"
-        if args.sale_unlock
         else "auto_unlock"
+        if args.auto_unlock
+        else "local_unlock"
+        if args.unlock_code is not None
+        else "signed_blob"
     )
-    requested_operator = "2 (sale)" if args.sale_unlock else args.operator
+    requested_operator = "current" if args.auto_unlock else "stock API"
     destination = report_path(args.report, project) if wants_report else None
     properties: dict[str, str] = {}
     tool_output = ""
@@ -247,14 +294,14 @@ def main() -> int:
             )
             time.sleep(0.4)
 
-        result = run(adb + ["shell", "su", "-c", command], capture=wants_report)
+        result = run(system_uid_command(adb, java_args), capture=wants_report)
         if wants_report:
             tool_output = result.stdout or ""
             if tool_output:
                 print(tool_output, end="" if tool_output.endswith("\n") else "\n")
-            time.sleep(2.5 if action in ("auto_unlock", "sale_unlock") else 0.3)
+            time.sleep(2.5 if action in ("auto_unlock", "local_unlock", "signed_blob") else 0.3)
             status_result = run(
-                adb + ["shell", "su", "-c", java_command(["--status"])],
+                system_uid_command(adb, ["--slot", str(args.slot), "--status"]),
                 capture=True,
             )
             status_output = status_result.stdout or ""
