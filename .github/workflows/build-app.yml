@@ -10,16 +10,18 @@ permissions:
 
 jobs:
   build:
-    name: Build debug APK
+    name: Build release APK
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
@@ -33,18 +35,109 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build app
+      - name: Set version from release tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_NAME" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            patch="${BASH_REMATCH[3]}"
+          else
+            echo "Release tags must use vMAJOR.MINOR.PATCH, for example v0.5.0." >&2
+            exit 1
+          fi
+
+          version_name="$major.$minor.$patch"
+          version_code=$((10#$major * 1000000 + 10#$minor * 1000 + 10#$patch))
+          if ((version_code < 1 || version_code > 2100000000)); then
+            echo "Calculated Android version code is outside the supported range." >&2
+            exit 1
+          fi
+
+          echo "REGION_UNLOCK_VERSION_NAME=$version_name" >> "$GITHUB_ENV"
+          echo "REGION_UNLOCK_VERSION_CODE=$version_code" >> "$GITHUB_ENV"
+
+      - name: Configure release signing
+        if: github.event_name != 'pull_request'
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.REGION_UNLOCK_KEYSTORE_BASE64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.REGION_UNLOCK_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.REGION_UNLOCK_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.REGION_UNLOCK_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          for variable in \
+            SIGNING_KEYSTORE_BASE64 \
+            SIGNING_STORE_PASSWORD \
+            SIGNING_KEY_ALIAS \
+            SIGNING_KEY_PASSWORD; do
+            if [[ -z "${!variable:-}" ]]; then
+              echo "Required release-signing secret is missing: $variable" >&2
+              exit 1
+            fi
+          done
+
+          keystore="$RUNNER_TEMP/region-unlock-release.keystore"
+          printf '%s' "$SIGNING_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          chmod 600 "$keystore"
+          echo "REGION_UNLOCK_KEYSTORE=$keystore" >> "$GITHUB_ENV"
+          echo "REGION_UNLOCK_STORE_PASSWORD=$SIGNING_STORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "REGION_UNLOCK_KEY_ALIAS=$SIGNING_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "REGION_UNLOCK_KEY_PASSWORD=$SIGNING_KEY_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Build signed release app
+        if: github.event_name != 'pull_request'
         run: ./build-app.sh
 
-      - name: Verify checksum
-        run: cd dist && sha256sum -c SHA256SUMS
+      - name: Build unsigned release for pull request
+        if: github.event_name == 'pull_request'
+        run: ./android-app/gradlew -p android-app :app:assembleRelease
 
-      - name: Upload APK
+      - name: Verify signed APK and checksum
+        if: github.event_name != 'pull_request'
+        run: |
+          build_tools="${ANDROID_HOME}/build-tools/36.0.0"
+          "$build_tools/apksigner" verify --verbose dist/oplus-region-unlock-app-*-release.apk
+          cd dist && sha256sum -c SHA256SUMS
+
+      - name: Upload signed APK
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: region-unlock-app-${{ github.sha }}
           path: |
-            dist/oplus-region-unlock-app-*.apk
+            dist/oplus-region-unlock-app-*-release.apk
             dist/SHA256SUMS
           if-no-files-found: error
           retention-days: 14
+
+      - name: Verify pull-request output exists
+        if: github.event_name == 'pull_request'
+        run: test -f android-app/app/build/outputs/apk/release/app-release-unsigned.apk
+
+  release:
+    name: Publish GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download verified app
+        uses: actions/download-artifact@v4
+        with:
+          name: region-unlock-app-${{ github.sha }}
+          path: dist
+
+      - name: Publish release with changelog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            dist/oplus-region-unlock-app-*-release.apk \
+            dist/SHA256SUMS \
+            --verify-tag \
+            --title "Region Unlock $GITHUB_REF_NAME" \
+            --generate-notes

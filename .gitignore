@@ -1,4 +1,6 @@
 /dist/
+/release.keystore
+/release-signing.password
 /android-app/.gradle/
 /android-app/build/
 /android-app/app/build/

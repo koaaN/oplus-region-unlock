@@ -36,19 +36,17 @@ region check fails and all state-changing actions remain disabled.
 
 ### On the phone
 
-1. Open the repository's **Actions** tab and select a successful **Build
-   Android app** run.
-2. Download and extract its `region-unlock-app-<commit>` artifact.
-3. Transfer `oplus-region-unlock-app-v0.4.0-debug.apk` to the phone.
-4. Open the APK and allow installation from that source if Android asks.
-5. Open **Region Unlock** and approve the root request from your root manager.
+1. Open the repository's **Releases** page and select the latest release.
+2. Download `oplus-region-unlock-app-v<version>-release.apk` to the phone.
+3. Open the APK and allow installation from that source if Android asks.
+4. Open **Region Unlock** and approve the root request from your root manager.
 
 ### With ADB
 
 Connect the phone with USB debugging enabled, then run:
 
 ```sh
-adb install -r oplus-region-unlock-app-v0.4.0-debug.apk
+adb install -r oplus-region-unlock-app-v<version>-release.apk
 ```
 
 Open **Region Unlock** on the phone and approve the root request.
@@ -117,20 +115,29 @@ Requirements:
 
 - JDK 21;
 - Android SDK Platform 36 and matching build tools;
+- a private Android release-signing keystore;
 - `sha256sum`.
 
-Build the debug APK from the repository root:
+Provide the signing configuration and build the release APK from the repository
+root:
 
 ```sh
 JAVA_HOME=/path/to/jdk21 \
 ANDROID_SDK_ROOT=/path/to/android-sdk \
+REGION_UNLOCK_KEYSTORE=/path/to/release.keystore \
+REGION_UNLOCK_STORE_PASSWORD=your-store-password \
+REGION_UNLOCK_KEY_ALIAS=region-unlock \
+REGION_UNLOCK_KEY_PASSWORD=your-key-password \
 ./build-app.sh
 ```
+
+Keep the keystore and its passwords backed up securely. Losing them prevents
+future releases from updating an already installed copy of the app.
 
 The build creates:
 
 ```text
-dist/oplus-region-unlock-app-v0.4.0-debug.apk
+dist/oplus-region-unlock-app-v0.4.0-release.apk
 dist/SHA256SUMS
 ```
 
@@ -144,6 +151,20 @@ GitHub Actions also builds the app on every push and pull request. Run the
 **Build Android app** workflow manually from the repository's **Actions** tab
 when an on-demand APK is needed. The APK and checksum are available together
 as the workflow run's downloadable artifact for 14 days.
+
+## Publish a release
+
+Create and push a stable semantic-version tag from the commit to release:
+
+```sh
+git tag v0.5.0
+git push origin v0.5.0
+```
+
+The **Build Android app** workflow validates the `vMAJOR.MINOR.PATCH` tag,
+sets the APK's version name and Android version code, builds and verifies the
+APK, and publishes it with `SHA256SUMS`. GitHub generates the release changelog
+automatically using the categories in `.github/release.yml`.
 
 ## Project layout
 

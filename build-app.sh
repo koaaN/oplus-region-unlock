@@ -14,15 +14,30 @@ if [[ -z "$sdk_root" ]]; then
     exit 1
 fi
 
+for variable in \
+    REGION_UNLOCK_KEYSTORE \
+    REGION_UNLOCK_STORE_PASSWORD \
+    REGION_UNLOCK_KEY_ALIAS \
+    REGION_UNLOCK_KEY_PASSWORD; do
+    if [[ -z "${!variable:-}" ]]; then
+        echo "error: set $variable to build a signed release APK" >&2
+        exit 1
+    fi
+done
+if [[ ! -f "$REGION_UNLOCK_KEYSTORE" ]]; then
+    echo "error: release keystore not found: $REGION_UNLOCK_KEYSTORE" >&2
+    exit 1
+fi
+
 mkdir -p "$project_dir/dist"
 
 ANDROID_HOME="$sdk_root" \
 REGION_UNLOCK_VERSION_NAME="$version" \
 REGION_UNLOCK_VERSION_CODE="$version_code" \
-    "$project_dir/android-app/gradlew" -p "$project_dir/android-app" :app:assembleDebug
+    "$project_dir/android-app/gradlew" -p "$project_dir/android-app" :app:assembleRelease
 
-app_apk="oplus-region-unlock-app-v$version-debug.apk"
-cp "$project_dir/android-app/app/build/outputs/apk/debug/app-debug.apk" \
+app_apk="oplus-region-unlock-app-v$version-release.apk"
+cp "$project_dir/android-app/app/build/outputs/apk/release/app-release.apk" \
     "$project_dir/dist/$app_apk"
 
 (
