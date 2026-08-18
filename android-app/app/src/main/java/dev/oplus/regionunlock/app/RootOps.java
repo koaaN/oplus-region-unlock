@@ -17,8 +17,12 @@ final class RootOps {
     private static final String MAIN_CLASS = "dev.oplus.regionunlock.RegionUnlock";
     private static final String SU = "/system/bin/su";
     private static final String ONEPLUS_13_PROJECT_ID = "23821";
+    private static final String ONEPLUS_13T_PROJECT_ID = "24821";
     private static final String ONEPLUS_15_PROJECT_ID = "24831";
-    private static final String ACE6_PROJECT_ID = "24851";
+    private static final String ONEPLUS_ACE_5_PRO_PROJECT_ID = "24811";
+    private static final String ONEPLUS_ACE_5_PROJECT_ID = "23851";
+    private static final String ONEPLUS_ACE_6_PROJECT_ID = "24851";
+    private static final String ONEPLUS_ACE_6T_PROJECT_ID = "24855";
     private static final Pattern STATE_PATTERN = Pattern.compile("\\bstate=(-?\\d+)\\b");
     private static final Pattern OPERATOR_PATTERN = Pattern.compile("\\boperator=(-?\\d+)\\b");
     private static final Pattern OPERATION_PATTERN = Pattern.compile("\\boperation=(-?\\d+)\\b");
@@ -98,19 +102,35 @@ final class RootOps {
 
     private static boolean isSupportedProject(String project) {
         return ONEPLUS_13_PROJECT_ID.equals(project)
+                || ONEPLUS_13T_PROJECT_ID.equals(project)
                 || ONEPLUS_15_PROJECT_ID.equals(project)
-                || ACE6_PROJECT_ID.equals(project);
+                || ONEPLUS_ACE_5_PRO_PROJECT_ID.equals(project)
+                || ONEPLUS_ACE_5_PROJECT_ID.equals(project)
+                || ONEPLUS_ACE_6_PROJECT_ID.equals(project)
+                || ONEPLUS_ACE_6T_PROJECT_ID.equals(project);
     }
 
     private static String marketingName(String project) {
         if (ONEPLUS_13_PROJECT_ID.equals(project)) {
             return "OnePlus 13";
         }
+        if (ONEPLUS_13T_PROJECT_ID.equals(project)) {
+            return "OnePlus 13T";
+        }
         if (ONEPLUS_15_PROJECT_ID.equals(project)) {
             return "OnePlus 15";
         }
-        if (ACE6_PROJECT_ID.equals(project)) {
+        if (ONEPLUS_ACE_5_PRO_PROJECT_ID.equals(project)) {
+            return "OnePlus Ace 5 Pro";
+        }
+        if (ONEPLUS_ACE_5_PROJECT_ID.equals(project)) {
+            return "OnePlus Ace 5";
+        }
+        if (ONEPLUS_ACE_6_PROJECT_ID.equals(project)) {
             return "OnePlus Ace 6";
+        }
+        if (ONEPLUS_ACE_6T_PROJECT_ID.equals(project)) {
+            return "OnePlus Ace 6T";
         }
         return "";
     }
@@ -119,19 +139,35 @@ final class RootOps {
         if (ONEPLUS_13_PROJECT_ID.equals(project)) {
             return "PJZ110 / OnePlus 13";
         }
+        if (ONEPLUS_13T_PROJECT_ID.equals(project)) {
+            return "OnePlus 13T";
+        }
         if (ONEPLUS_15_PROJECT_ID.equals(project)) {
             return "PLK110 / OnePlus 15";
         }
-        if (ACE6_PROJECT_ID.equals(project)) {
+        if (ONEPLUS_ACE_5_PRO_PROJECT_ID.equals(project)) {
+            return "OnePlus Ace 5 Pro";
+        }
+        if (ONEPLUS_ACE_5_PROJECT_ID.equals(project)) {
+            return "OnePlus Ace 5";
+        }
+        if (ONEPLUS_ACE_6_PROJECT_ID.equals(project)) {
             return "OnePlus Ace 6";
+        }
+        if (ONEPLUS_ACE_6T_PROJECT_ID.equals(project)) {
+            return "OnePlus Ace 6T";
         }
         return fallback;
     }
 
     private static String expectedProjects() {
         return ONEPLUS_13_PROJECT_ID + " (OnePlus 13), "
-                + ONEPLUS_15_PROJECT_ID + " (OnePlus 15), or "
-                + ACE6_PROJECT_ID + " (OnePlus Ace 6)";
+                + ONEPLUS_13T_PROJECT_ID + " (OnePlus 13T), "
+                + ONEPLUS_15_PROJECT_ID + " (OnePlus 15), "
+                + ONEPLUS_ACE_5_PRO_PROJECT_ID + " (OnePlus Ace 5 Pro), "
+                + ONEPLUS_ACE_5_PROJECT_ID + " (OnePlus Ace 5), "
+                + ONEPLUS_ACE_6_PROJECT_ID + " (OnePlus Ace 6), or "
+                + ONEPLUS_ACE_6T_PROJECT_ID + " (OnePlus Ace 6T)";
     }
 
     static String deviceInfo() {

@@ -14,11 +14,11 @@ JAVA_HOME=/path/to/jdk21 ANDROID_SDK_ROOT=/path/to/android-sdk ./build-app.sh
 Output:
 
 ```text
-dist/oplus-region-unlock-app-v0.4.0-release.apk
+dist/oplus-region-unlock-app-v0.4.1-release.apk
 ```
 
 Install with:
 
 ```sh
-adb install -r dist/oplus-region-unlock-app-v0.4.0-release.apk
+adb install -r dist/oplus-region-unlock-app-v0.4.1-release.apk
 ```

@@ -15,8 +15,12 @@ packaged in the APK.
 | Device | Model | PRJ-ID | Status |
 |---|---|---:|---|
 | OnePlus 13 | `PJZ110` / `CPH2653` | `23821` | Stock OxygenOS path tested |
+| OnePlus 13T | — | `24821` | Identity support added; stock-device validation ongoing |
 | OnePlus 15 | `PLK110` / `CPH2745` | `24831` | Identity and stock framework path confirmed; stock-device validation ongoing |
+| OnePlus Ace 5 Pro | — | `24811` | Identity support added; stock-device validation ongoing |
+| OnePlus Ace 5 | — | `23851` | Identity support added; stock-device validation ongoing |
 | OnePlus Ace 6 | — | `24851` | Identity support added; stock-device validation ongoing |
+| OnePlus Ace 6T | — | `24855` | Identity support added; stock-device validation ongoing |
 
 The app checks the PRJ-ID in both the interface and Java backend. Unsupported
 devices cannot send region-state commands.
@@ -74,7 +78,8 @@ locked state `1`.
 Reboot, then refresh the checks to confirm the actual modem state. A request
 being accepted only means it was submitted; the refreshed state is the final
 result. Lock persistence has been verified on OnePlus 13, but is not currently
-verified on OnePlus 15 or OnePlus Ace 6.
+verified on OnePlus 13T, OnePlus 15, OnePlus Ace 5 Pro, OnePlus Ace 5,
+OnePlus Ace 6, or OnePlus Ace 6T.
 
 ## State values
 
@@ -137,7 +142,7 @@ future releases from updating an already installed copy of the app.
 The build creates:
 
 ```text
-dist/oplus-region-unlock-app-v0.4.0-release.apk
+dist/oplus-region-unlock-app-v0.4.1-release.apk
 dist/SHA256SUMS
 ```
 

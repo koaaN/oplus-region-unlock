@@ -2,8 +2,8 @@
 set -euo pipefail
 
 project_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-version=${REGION_UNLOCK_VERSION_NAME:-0.4.0}
-version_code=${REGION_UNLOCK_VERSION_CODE:-4}
+version=${REGION_UNLOCK_VERSION_NAME:-0.4.1}
+version_code=${REGION_UNLOCK_VERSION_CODE:-4001}
 
 sdk_root=${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}
 if [[ -z "$sdk_root" && -d /tmp/android-sdk ]]; then
