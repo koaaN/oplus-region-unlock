@@ -1,7 +1,4 @@
-/build/
 /dist/
-__pycache__/
-/reports/
 /android-app/.gradle/
 /android-app/build/
 /android-app/app/build/

@@ -1,6 +1,0 @@
-id=oplus-region-unlock
-name=OnePlus Region Unlock Client
-version=0.4.0
-versionCode=4
-author=OnePlus region-lock research project
-description=One-shot supported OnePlus AUTO_UNLOCK: runs after the first boot, reboots to apply state 0, and removes itself.

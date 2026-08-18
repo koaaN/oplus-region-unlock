@@ -2,12 +2,8 @@
 set -euo pipefail
 
 project_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-version=$(sed -n 's/^version=//p' "$project_dir/module/module.prop")
-version_code=$(sed -n 's/^versionCode=//p' "$project_dir/module/module.prop")
-if [[ -z "$version" || -z "$version_code" ]]; then
-    echo "error: module/module.prop does not define version/versionCode" >&2
-    exit 1
-fi
+version=${REGION_UNLOCK_VERSION_NAME:-0.4.0}
+version_code=${REGION_UNLOCK_VERSION_CODE:-4}
 
 sdk_root=${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}
 if [[ -z "$sdk_root" && -d /tmp/android-sdk ]]; then
@@ -18,7 +14,7 @@ if [[ -z "$sdk_root" ]]; then
     exit 1
 fi
 
-"$project_dir/build.sh"
+mkdir -p "$project_dir/dist"
 
 ANDROID_HOME="$sdk_root" \
 REGION_UNLOCK_VERSION_NAME="$version" \
@@ -31,10 +27,7 @@ cp "$project_dir/android-app/app/build/outputs/apk/debug/app-debug.apk" \
 
 (
     cd "$project_dir/dist"
-    sha256sum oplus-region-unlock.jar \
-        "oplus-region-unlock-magisk-v$version.zip" \
-        "oplus-region-unlock-pc-v$version.zip" \
-        "$app_apk" > SHA256SUMS
+    sha256sum "$app_apk" > SHA256SUMS
 )
 
 echo "Built Android app:"
