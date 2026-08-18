@@ -6,11 +6,11 @@ val appVersionCode = System.getenv("REGION_UNLOCK_VERSION_CODE")?.toIntOrNull() 
 val appVersionName = System.getenv("REGION_UNLOCK_VERSION_NAME") ?: "0.4.0"
 
 android {
-    namespace = "dev.op13.regionunlock.app"
+    namespace = "dev.oplus.regionunlock.app"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "dev.op13.regionunlock.app"
+        applicationId = "dev.oplus.regionunlock.app"
         minSdk = 29
         targetSdk = 36
         versionCode = appVersionCode

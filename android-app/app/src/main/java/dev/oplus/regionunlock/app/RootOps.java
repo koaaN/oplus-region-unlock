@@ -1,4 +1,4 @@
-package dev.op13.regionunlock.app;
+package dev.oplus.regionunlock.app;
 
 import android.content.Context;
 import android.os.Build;
@@ -14,10 +14,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 final class RootOps {
-    private static final String MAIN_CLASS = "dev.op13.regionunlock.RegionUnlock";
+    private static final String MAIN_CLASS = "dev.oplus.regionunlock.RegionUnlock";
     private static final String SU = "/system/bin/su";
-    private static final String OP13_PROJECT_ID = "23821";
-    private static final String OP15_PROJECT_ID = "24831";
+    private static final String ONEPLUS_13_PROJECT_ID = "23821";
+    private static final String ONEPLUS_15_PROJECT_ID = "24831";
     private static final String ACE6_PROJECT_ID = "24851";
     private static final Pattern STATE_PATTERN = Pattern.compile("\\bstate=(-?\\d+)\\b");
     private static final Pattern OPERATOR_PATTERN = Pattern.compile("\\boperator=(-?\\d+)\\b");
@@ -97,16 +97,16 @@ final class RootOps {
     }
 
     private static boolean isSupportedProject(String project) {
-        return OP13_PROJECT_ID.equals(project)
-                || OP15_PROJECT_ID.equals(project)
+        return ONEPLUS_13_PROJECT_ID.equals(project)
+                || ONEPLUS_15_PROJECT_ID.equals(project)
                 || ACE6_PROJECT_ID.equals(project);
     }
 
     private static String marketingName(String project) {
-        if (OP13_PROJECT_ID.equals(project)) {
+        if (ONEPLUS_13_PROJECT_ID.equals(project)) {
             return "OnePlus 13";
         }
-        if (OP15_PROJECT_ID.equals(project)) {
+        if (ONEPLUS_15_PROJECT_ID.equals(project)) {
             return "OnePlus 15";
         }
         if (ACE6_PROJECT_ID.equals(project)) {
@@ -116,10 +116,10 @@ final class RootOps {
     }
 
     private static String deviceName(String project, String fallback) {
-        if (OP13_PROJECT_ID.equals(project)) {
+        if (ONEPLUS_13_PROJECT_ID.equals(project)) {
             return "PJZ110 / OnePlus 13";
         }
-        if (OP15_PROJECT_ID.equals(project)) {
+        if (ONEPLUS_15_PROJECT_ID.equals(project)) {
             return "PLK110 / OnePlus 15";
         }
         if (ACE6_PROJECT_ID.equals(project)) {
@@ -129,8 +129,8 @@ final class RootOps {
     }
 
     private static String expectedProjects() {
-        return OP13_PROJECT_ID + " (OnePlus 13), "
-                + OP15_PROJECT_ID + " (OnePlus 15), or "
+        return ONEPLUS_13_PROJECT_ID + " (OnePlus 13), "
+                + ONEPLUS_15_PROJECT_ID + " (OnePlus 15), or "
                 + ACE6_PROJECT_ID + " (OnePlus Ace 6)";
     }
 

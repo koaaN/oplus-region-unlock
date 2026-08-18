@@ -1,4 +1,4 @@
-package dev.op13.regionunlock;
+package dev.oplus.regionunlock;
 
 import android.content.Context;
 import android.os.Bundle;
@@ -300,7 +300,7 @@ public final class RegionUnlock {
             final Object[] arguments) throws Exception {
         final CountDownLatch latch = new CountDownLatch(1);
         final Callback callback = new Callback();
-        HandlerThread thread = new HandlerThread("op13-region-lock-callback");
+        HandlerThread thread = new HandlerThread("oplus-region-lock-callback");
         thread.start();
         Handler handler = new Handler(thread.getLooper()) {
             @Override

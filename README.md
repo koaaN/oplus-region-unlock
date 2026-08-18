@@ -149,6 +149,6 @@ as the workflow run's downloadable artifact for 14 days.
 
 ```text
 android-app/                                Android application and interface
-src/dev/op13/regionunlock/RegionUnlock.java Packaged stock-radio client
+src/dev/oplus/regionunlock/RegionUnlock.java Packaged stock-radio client
 build-app.sh                                App build and packaging script
 ```

@@ -1,4 +1,4 @@
-package dev.op13.regionunlock.app;
+package dev.oplus.regionunlock.app;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
