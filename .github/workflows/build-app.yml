@@ -125,6 +125,11 @@ jobs:
       contents: write
 
     steps:
+      - name: Check out release tag
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
       - name: Download verified app
         uses: actions/download-artifact@v4
         with:
