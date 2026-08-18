@@ -163,8 +163,9 @@ git push origin v0.5.0
 
 The **Build Android app** workflow validates the `vMAJOR.MINOR.PATCH` tag,
 sets the APK's version name and Android version code, builds and verifies the
-APK, and publishes it with `SHA256SUMS`. GitHub generates the release changelog
-automatically using the categories in `.github/release.yml`.
+APK, and publishes it with `SHA256SUMS`. The release notes contain a changelog
+of non-merge commits since the previous version tag and a link to the full
+GitHub comparison.
 
 ## Project layout
 

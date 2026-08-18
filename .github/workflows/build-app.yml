@@ -140,9 +140,24 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
+          previous_tag=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          if [[ -n "$previous_tag" ]]; then
+            changelog_range="$previous_tag..$GITHUB_REF_NAME"
+          else
+            changelog_range="$GITHUB_REF_NAME"
+          fi
+
+          {
+            echo "## Changelog"
+            echo
+            git log --no-merges --pretty='- %s (`%h`)' "$changelog_range"
+            if [[ -n "$previous_tag" ]]; then
+              echo
+              echo "**Full Changelog**: https://github.com/$GITHUB_REPOSITORY/compare/$previous_tag...$GITHUB_REF_NAME"
+            fi
+          } | gh release create "$GITHUB_REF_NAME" \
             dist/oplus-region-unlock-app-*-release.apk \
             dist/SHA256SUMS \
             --verify-tag \
             --title "Region Unlock $GITHUB_REF_NAME" \
-            --generate-notes
+            --notes-file -
