@@ -85,6 +85,17 @@ public final class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public String appVersion() {
+            try {
+                String version = getPackageManager()
+                        .getPackageInfo(getPackageName(), 0).versionName;
+                return version == null ? "Unknown" : version;
+            } catch (Throwable ignored) {
+                return "Unknown";
+            }
+        }
+
+        @JavascriptInterface
         public void rootCheck(String callback) {
             worker.execute(() -> deliver(callback, RootOps.rootCheck()));
         }
