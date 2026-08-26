@@ -1,3 +1,5 @@
+![OnePlus Region Unlock](docs/assets/github-banner.png)
+
 # OnePlus Region Unlock
 
 A standalone, root-assisted Android app for reading and changing the stock
@@ -14,9 +16,9 @@ packaged in the APK.
 
 | Device | Model | PRJ-ID | Status |
 |---|---|---:|---|
-| OnePlus 13 | `PJZ110` | `23821` | Lock and unlock confirmed on stock OxygenOS |
+| OnePlus 13 | `PJZ110` | `23821` | Lock and unlock confirmed on stock OPlus OS |
 | OnePlus 13T | `PKX110` | `24821` | Identity support added; stock-device validation ongoing |
-| OnePlus 15 | `PLK110` | `24831` | Lock and unlock confirmed on stock OxygenOS |
+| OnePlus 15 | `PLK110` | `24831` | Lock and unlock confirmed on stock OPlus OS |
 | OnePlus Ace 5 Pro | `PKR110` | `24811` | Identity support added; stock-device validation ongoing |
 | OnePlus Ace 5 | `PKG110` | `23851` | Identity support added; stock-device validation ongoing |
 | OnePlus Ace 6 | `PLQ110` | `24851` | Identity support added; stock-device validation ongoing |
@@ -27,7 +29,7 @@ devices cannot send region-state commands.
 
 ## Requirements
 
-- a supported device running a compatible stock OxygenOS or ColorOS build;
+- a supported device running a compatible stock OPlus OS build;
 - root through Magisk, KernelSU, APatch, or another provider with a working
   `su` command;
 - the stock Oplus telephony framework and subsystem-radio service.
@@ -99,7 +101,7 @@ the app does not create or submit one.
 
 ## How it works
 
-Stock OxygenOS rejects these region API calls from root UID `0`. After root is
+Stock OPlus firmware rejects these region API calls from root UID `0`. After root is
 approved, the app runs its packaged client as Android system UID `1000`, reads
 the current state through the stock Oplus telephony framework, and sends the
 stock subsystem-radio request. State changes happen only after an explicit
