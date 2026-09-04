@@ -170,8 +170,8 @@ body.main-screen{height:100dvh;overflow:hidden;display:flex;flex-direction:colum
       <p class="about-copy">Created by <strong>koaaN</strong>.<br>Reverse engineering by <strong>mikoker</strong>.</p>
       <div class="about-list">
         <div class="about-row"><small>VERSION</small><strong id="appVersion">—</strong></div>
-        <div class="about-row"><small>SUPPORTED PROJECT IDS</small><strong>23821 · 24821 · 24831 · 24811 · 23851 · 24851 · 24855</strong></div>
-        <div class="about-row"><small>REQUIREMENTS</small><strong>Root access · stock Oplus telephony framework</strong></div>
+        <div class="about-row"><small>REGION ELIGIBILITY</small><strong>Stock region service reports CN</strong></div>
+        <div class="about-row"><small>REQUIREMENTS</small><strong>Root access · stock OPlus telephony framework</strong></div>
       </div>
     </div>
 
@@ -235,6 +235,7 @@ let callbackId=0;
 let lockConfirmations=0;
 let rootReady=false;
 let regionServiceReady=false;
+let regionSupported=false;
 let currentRegionState=null;
 const byId=id=>document.getElementById(id);
 function parse(value){try{return JSON.parse(value)}catch(error){return{ok:false,message:'Invalid app response.',log:String(value)}}}
@@ -251,6 +252,7 @@ function updateState(result){
   const parsedState=Number(result.state);
   const hasState=result.state!==undefined&&result.state!==null&&result.state!=='';
   regionServiceReady=result.ok&&hasState&&Number.isFinite(parsedState);
+  regionSupported=regionServiceReady&&result.supported===true;
   currentRegionState=regionServiceReady?parsedState:null;
   updateActions();
   if(!result.ok){card.classList.add('bad');byId('stateText').textContent='Could not read state';byId('stateCode').textContent='ERROR';animateState();return}
@@ -273,7 +275,7 @@ function updateRegionDetails(result){
   byId('regionMode').parentElement.className='region-item mode '+(result.ok?(result.unlocked?'ok':'bad'):'bad');
   animateRegionValues();
 }
-function updateActions(){const enabled=device.supported&&rootReady&&regionServiceReady;const unlock=byId('unlockButton');unlock.disabled=!enabled||currentRegionState===0;unlock.textContent=currentRegionState===0?'Already unlocked':'Unlock region';byId('actionTitle').textContent=currentRegionState===0?'Region already unlocked':'Unlock region';byId('actionSubtitle').textContent=currentRegionState===0?'No region restriction is currently active.':(!device.supported?'This device is not supported.':(!rootReady?'Root access is required to continue.':(!regionServiceReady?'Refresh the region check to continue.':'Remove the active stock region restriction.')));byId('lockRegionButton').disabled=!enabled||currentRegionState===1}
+function updateActions(){const enabled=rootReady&&regionServiceReady&&regionSupported;const unlock=byId('unlockButton');unlock.disabled=!enabled||currentRegionState===0;unlock.textContent=currentRegionState===0?'Already unlocked':'Unlock region';byId('actionTitle').textContent=currentRegionState===0?'Region already unlocked':'Unlock region';byId('actionSubtitle').textContent=currentRegionState===0?'No region restriction is currently active.':(!rootReady?'Root access is required to continue.':(!regionServiceReady?'Refresh the region check to continue.':(!regionSupported?'The stock region service must report CN.':'Remove the active stock region restriction.')));byId('lockRegionButton').disabled=!enabled||currentRegionState===1}
 function updateRoot(result){const status=byId('rootStatus');status.className='header-root '+(result.ok?'ok':'bad');byId('rootStateText').textContent=result.ok?'Root available':'Root unavailable';rootReady=result.ok;updateActions()}
 function showMainError(message){regionServiceReady=false;updateActions();byId('stateCard').className='state-card bad';byId('stateText').textContent=message||'Operation failed';byId('stateCode').textContent='ERROR';animateState()}
 function checkAll(){setBusy(true,'Checking root access…');const rootCb=callback(root=>{updateRoot(root);if(!root.ok){setBusy(false);updateState({ok:false});updateRegionDetails({ok:false});return}setBusy(true,'Reading region state…');const statusCb=callback(status=>{setBusy(false);updateState(status);updateRegionDetails(status)});RegionUnlock.status(statusCb)});RegionUnlock.rootCheck(rootCb)}
@@ -297,7 +299,8 @@ syncVisualViewport();
 if(window.visualViewport){window.visualViewport.addEventListener('resize',syncVisualViewport);window.visualViewport.addEventListener('scroll',syncVisualViewport)}
 byId('lockPhrase').addEventListener('focus',()=>setTimeout(()=>byId('lockPhrase').scrollIntoView({block:'center',behavior:'smooth'}),180));
 const device=parse(RegionUnlock.deviceInfo());
-byId('device').textContent=device.supported?(device.marketingName+' · '+device.projectId):(device.model||'Unsupported device');
+const deviceLabel=device.marketingName||device.model||'Unknown device';
+byId('device').textContent=device.projectId?(deviceLabel+' · '+device.projectId):deviceLabel;
 byId('appVersion').textContent=RegionUnlock.appVersion();
 updateActions();
 const bright=localStorage.getItem('regionUnlockBright')==='1';byId('brightSwitch').checked=bright;setBright(bright);

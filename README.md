@@ -3,7 +3,7 @@
 # OnePlus Region Unlock
 
 A standalone, root-assisted Android app for reading and changing the stock
-region-lock state on supported OnePlus phones. Everything needed by the app is
+region-lock state on compatible OnePlus and OPlus phones. Everything needed by the app is
 packaged in the APK.
 
 > [!CAUTION]
@@ -12,7 +12,7 @@ packaged in the APK.
 > device generations. This project does not generate local unlock codes, forge
 > provisioning blobs, or bypass modem signature verification.
 
-## Supported devices
+## Validated devices
 
 | Device | Model | PRJ-ID | Status |
 |---|---|---:|---|
@@ -24,15 +24,17 @@ packaged in the APK.
 | OnePlus Ace 6 | `PLQ110` | `24851` | Identity support added; stock-device validation ongoing |
 | OnePlus Ace 6T | `PLR110` | `24855` | Identity support added; stock-device validation ongoing |
 
-The app checks the PRJ-ID in both the interface and Java backend. Unsupported
-devices cannot send region-state commands.
+PRJ-ID is used only to display a friendly device name. Command eligibility is
+determined from the live stock-service response: the region must be exactly
+`CN`. The backend repeats this check immediately before every state-changing
+request, so a UI-only or stale result cannot bypass it.
 
 ## Requirements
 
-- a supported device running a compatible stock OPlus OS build;
+- a device whose compatible stock OPlus region service reports `Region: CN`;
 - root through Magisk, KernelSU, APatch, or another provider with a working
   `su` command;
-- the stock Oplus telephony framework and subsystem-radio service.
+- the stock OPlus telephony framework and subsystem-radio service.
 
 A custom ROM may retain the vendor radio HAL while omitting the stock framework
 service the app needs. In that case the app can identify the phone, but the
@@ -103,14 +105,14 @@ the app does not create or submit one.
 
 Stock OPlus firmware rejects these region API calls from root UID `0`. After root is
 approved, the app runs its packaged client as Android system UID `1000`, reads
-the current state through the stock Oplus telephony framework, and sends the
+the current state through the stock OPlus telephony framework, and sends the
 stock subsystem-radio request. State changes happen only after an explicit
 action in the app; nothing is installed to run during boot.
 
 Safety gates require all of the following before a state-changing action is
 enabled:
 
-- a supported PRJ-ID;
+- a successful live `Region: CN` result;
 - working root access;
 - a successful read from the stock region service;
 - a state other than `0` for the unlock action;
@@ -187,4 +189,4 @@ build-app.sh                                App build and packaging script
 Copyright 2026 koaaN. Licensed under the [Apache License 2.0](LICENSE).
 
 This project is not affiliated with, endorsed by, or sponsored by OnePlus or
-Oplus. Product names and trademarks belong to their respective owners.
+OPlus. Product names and trademarks belong to their respective owners.

@@ -100,16 +100,6 @@ final class RootOps {
         return "";
     }
 
-    private static boolean isSupportedProject(String project) {
-        return ONEPLUS_13_PROJECT_ID.equals(project)
-                || ONEPLUS_13T_PROJECT_ID.equals(project)
-                || ONEPLUS_15_PROJECT_ID.equals(project)
-                || ONEPLUS_ACE_5_PRO_PROJECT_ID.equals(project)
-                || ONEPLUS_ACE_5_PROJECT_ID.equals(project)
-                || ONEPLUS_ACE_6_PROJECT_ID.equals(project)
-                || ONEPLUS_ACE_6T_PROJECT_ID.equals(project);
-    }
-
     private static String marketingName(String project) {
         if (ONEPLUS_13_PROJECT_ID.equals(project)) {
             return "OnePlus 13";
@@ -160,27 +150,17 @@ final class RootOps {
         return fallback;
     }
 
-    private static String expectedProjects() {
-        return ONEPLUS_13_PROJECT_ID + " (OnePlus 13), "
-                + ONEPLUS_13T_PROJECT_ID + " (OnePlus 13T), "
-                + ONEPLUS_15_PROJECT_ID + " (OnePlus 15), "
-                + ONEPLUS_ACE_5_PRO_PROJECT_ID + " (OnePlus Ace 5 Pro), "
-                + ONEPLUS_ACE_5_PROJECT_ID + " (OnePlus Ace 5), "
-                + ONEPLUS_ACE_6_PROJECT_ID + " (OnePlus Ace 6), or "
-                + ONEPLUS_ACE_6T_PROJECT_ID + " (OnePlus Ace 6T)";
-    }
-
     static String deviceInfo() {
         try {
             String model = Build.MANUFACTURER + " " + Build.MODEL;
             String project = projectId();
-            boolean supported = isSupportedProject(project);
+            String marketingName = marketingName(project);
             return new JSONObject()
                     .put("model", model.trim())
                     .put("projectId", project)
-                    .put("supported", supported)
+                    .put("knownProject", !marketingName.isEmpty())
                     .put("deviceName", deviceName(project, model.trim()))
-                    .put("marketingName", marketingName(project))
+                    .put("marketingName", marketingName)
                     .put("android", Build.VERSION.RELEASE)
                     .put("sdk", Build.VERSION.SDK_INT)
                     .toString();
@@ -208,7 +188,7 @@ final class RootOps {
         String client = "CLASSPATH=" + shellQuote(apk)
                 + " exec /system/bin/app_process /system/bin " + MAIN_CLASS
                 + " --slot 0 --wait " + timeoutSeconds + " " + action;
-        // Oplus SubsysPermissions rejects UID 0. Root is used only to transition
+        // OPlus SubsysPermissions rejects UID 0. Root is used only to transition
         // the client to Android system UID 1000, matching the stock service.
         return command(timeoutSeconds + 20L, SU, "1000", "-c", client);
     }
@@ -251,6 +231,28 @@ final class RootOps {
         }
     }
 
+    private static boolean isSupportedRegion(String region) {
+        return "CN".equalsIgnoreCase(region == null ? "" : region.trim());
+    }
+
+    private static JSONObject regionGateFailure(String action, CommandResult status)
+            throws Exception {
+        String region = parseLastText(REGION_PATTERN, status.output);
+        if (status.exitCode != 0) {
+            return response(false,
+                    "Could not verify region support. " + action + " was not sent.",
+                    status.output)
+                    .put("supported", false)
+                    .put("region", region)
+                    .put("exitCode", status.exitCode);
+        }
+        return response(false,
+                "Region CN was not reported. " + action + " was not sent.",
+                status.output)
+                .put("supported", false)
+                .put("region", region);
+    }
+
     static String status(Context context) {
         try {
             CommandResult command = runClient(context, "--status", 30);
@@ -259,16 +261,18 @@ final class RootOps {
                         .put("exitCode", command.exitCode).toString();
             }
             int state = parseState(command.output);
+            String region = parseLastText(REGION_PATTERN, command.output);
             boolean unlocked = state == 0 || state == 2 || state == 4 || state == 5;
             return response(true, stateName(state), command.output)
                     .put("state", state)
                     .put("operator", parseLastInt(OPERATOR_PATTERN, command.output))
                     .put("operation", parseLastInt(OPERATION_PATTERN, command.output))
                     .put("result", parseLastInt(RESULT_PATTERN, command.output))
-                    .put("region", parseLastText(REGION_PATTERN, command.output))
+                    .put("region", region)
                     .put("brand", parseLastText(BRAND_PATTERN, command.output))
                     .put("version", parseLastText(VERSION_PATTERN, command.output))
                     .put("unlocked", unlocked)
+                    .put("supported", isSupportedRegion(region))
                     .toString();
         } catch (Throwable error) {
             return failure("Status check failed", error);
@@ -298,15 +302,10 @@ final class RootOps {
 
     static String unlock(Context context) {
         try {
-            String project = projectId();
-            if (!isSupportedProject(project)) {
-                return response(false,
-                        "Unsupported device. AUTO_UNLOCK was not sent.",
-                        "Expected PRJ-ID " + expectedProjects() + ", found "
-                                + (project.isEmpty() ? "<unavailable>" : project))
-                        .put("supported", false)
-                        .put("projectId", project)
-                        .toString();
+            CommandResult status = runClient(context, "--status", 30);
+            String region = parseLastText(REGION_PATTERN, status.output);
+            if (status.exitCode != 0 || !isSupportedRegion(region)) {
+                return regionGateFailure("AUTO_UNLOCK", status).toString();
             }
             CommandResult command = runClient(context, "--auto-unlock", 60);
             if (command.exitCode != 0) {
@@ -317,6 +316,8 @@ final class RootOps {
                     "Unlock request accepted. Reboot the phone to apply state 0.",
                     command.output)
                     .put("accepted", true)
+                    .put("supported", true)
+                    .put("region", region)
                     .put("requiresReboot", true)
                     .toString();
         } catch (Throwable error) {
@@ -332,15 +333,10 @@ final class RootOps {
                         "Enter the exact uppercase word LOCK. No command was sent.")
                         .toString();
             }
-            String project = projectId();
-            if (!isSupportedProject(project)) {
-                return response(false,
-                        "Unsupported device. LOCK_STATE was not sent.",
-                        "Expected PRJ-ID " + expectedProjects() + ", found "
-                                + (project.isEmpty() ? "<unavailable>" : project))
-                        .put("supported", false)
-                        .put("projectId", project)
-                        .toString();
+            CommandResult status = runClient(context, "--status", 30);
+            String region = parseLastText(REGION_PATTERN, status.output);
+            if (status.exitCode != 0 || !isSupportedRegion(region)) {
+                return regionGateFailure("LOCK_STATE", status).toString();
             }
             CommandResult command = runClient(context, "--lock-state", 60);
             if (command.exitCode != 0) {
@@ -351,6 +347,8 @@ final class RootOps {
                     "Lock request accepted. Reboot the phone to apply state 1.",
                     command.output)
                     .put("accepted", true)
+                    .put("supported", true)
+                    .put("region", region)
                     .put("targetState", 1)
                     .put("requiresReboot", true)
                     .toString();
